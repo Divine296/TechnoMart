@@ -1,0 +1,13 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.py[cod]
+.env
+.venv
+venv
+env
+migrations/__pycache__
+media
+private_media
+.db.sqlite3

@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: technomart
+          MYSQL_USER: tm_user
+          MYSQL_PASSWORD: tm_password
+          MYSQL_ROOT_PASSWORD: root_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost -u tm_user -ptm_password"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DJANGO_SECRET_KEY: test-ci-secret
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+      DJANGO_DB_ENGINE: mysql
+      DJANGO_DB_NAME: technomart
+      DJANGO_DB_USER: tm_user
+      DJANGO_DB_PASSWORD: tm_password
+      DJANGO_DB_HOST: 127.0.0.1
+      DJANGO_DB_PORT: 3306
+      DJANGO_DB_CONN_MAX_AGE: 60
+      REDIS_URL: redis://127.0.0.1:6379/0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y default-libmysqlclient-dev build-essential mysql-client
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Wait for MySQL
+        run: |
+          for i in {1..30}; do
+            mysqladmin ping -h127.0.0.1 -P3306 -utm_user --password=tm_password --silent && break
+            sleep 2
+          done
+
+      - name: Django checks
+        working-directory: backend
+        run: |
+          python manage.py check --deploy
+          python manage.py makemigrations --check --dry-run
+
+      - name: Migrate
+        working-directory: backend
+        run: python manage.py migrate --noinput
+
+      - name: Run tests
+        working-directory: backend
+        run: python manage.py test -v 2

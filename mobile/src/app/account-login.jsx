@@ -29,7 +29,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 WebBrowser.maybeCompleteAuthSession();
 
 // ✅ Backend API base
-const LOCAL_IP = '192.168.166.179';
+const LOCAL_IP = '192.168.1.6';
 const API_BASE = `http://${LOCAL_IP}:8000/api/accounts`;
 
 export default function AccountLoginScreen() {

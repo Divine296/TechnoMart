@@ -7,12 +7,12 @@ import {
   StyleSheet,
   ImageBackground,
   Image,
-  Alert,
   ActivityIndicator,
+  SafeAreaView,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { storeTokens, USER_CACHE_KEY, getGuestToken } from '../api/api';
-
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -21,16 +21,16 @@ import {
   Roboto_700Bold,
   Roboto_900Black,
 } from '@expo-google-fonts/roboto';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 WebBrowser.maybeCompleteAuthSession();
 
-// ✅ Backend API base
 const LOCAL_IP = '192.168.1.6';
 const API_BASE = `http://${LOCAL_IP}:8000/api/accounts`;
+
+const { width, height } = Dimensions.get('window');
 
 export default function AccountLoginScreen() {
   const router = useRouter();
@@ -49,7 +49,6 @@ export default function AccountLoginScreen() {
     return String(msg);
   };
 
-  // ✅ Google Auth Config
   const googleConfig = {
     expoClientId:
       '286008841345-f316kiittefdfi03ns17jljlc14urr2k.apps.googleusercontent.com',
@@ -65,7 +64,6 @@ export default function AccountLoginScreen() {
   const [request, , promptAsync] = Google.useAuthRequest(googleConfig);
   const validateEmail = useCallback((value) => /\S+@\S+\.\S+/.test(value), []);
 
-  // ✅ Auto redirect if already logged in
   useEffect(() => {
     const checkUser = async () => {
       const storedUser = await AsyncStorage.getItem('user');
@@ -77,7 +75,7 @@ export default function AccountLoginScreen() {
     checkUser();
   }, []);
 
-  // ✅ Login API
+  // Login API
   const login = async ({ email, password }) => {
     try {
       const response = await fetch(`${API_BASE}/login/`, {
@@ -102,7 +100,6 @@ export default function AccountLoginScreen() {
     }
   };
 
-  // ✅ Email/password login handler
   const handleLogin = async () => {
     if (loading) return;
 
@@ -114,21 +111,24 @@ export default function AccountLoginScreen() {
     if (Object.keys(errs).length > 0) return;
 
     setLoading(true);
+    setErrors({});
 
     try {
       const { success, data, message } = await login({ email, password });
 
       if (!success) {
-        return Alert.alert('Login Failed', message || 'Incorrect credentials');
+        setErrors({
+          general: message || 'Account does not exist',
+        });
+        setLoading(false);
+        return;
       }
 
-      // ✅ Save tokens
       await storeTokens({
         accessToken: data.access,
         refreshToken: data.refresh,
       });
 
-      // ✅ Use the token directly from API response
       const profileRes = await fetch(`${API_BASE}/profile/`, {
         headers: { Authorization: `Bearer ${data.access}` },
       });
@@ -139,26 +139,18 @@ export default function AccountLoginScreen() {
       }
 
       const profile = await profileRes.json();
-
-      // ✅ Save user profile
       await AsyncStorage.setItem(USER_CACHE_KEY, JSON.stringify(profile));
       setUser(profile);
 
-      Alert.alert('Success', 'Login successful!', [
-        {
-          text: 'Continue',
-          onPress: () => router.replace('/biometric-face-enrollment'),
-        },
-      ]);
+      router.replace('/biometric-face-enrollment');
     } catch (error) {
       console.error('Login error:', error);
-      Alert.alert('Login Failed', formatMessage(error.message));
+      setErrors({ general: 'Network error. Please try again.' });
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ Google login handler
   const handleGoogleSignIn = useCallback(async () => {
     if (!request) {
       Alert.alert(
@@ -178,7 +170,6 @@ export default function AccountLoginScreen() {
       const idToken = result.authentication?.idToken || result.params?.id_token;
       if (!idToken) throw new Error('Missing Google ID token');
 
-      // Send ID token to backend
       const res = await fetch(`${API_BASE}/google-login/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -189,16 +180,13 @@ export default function AccountLoginScreen() {
 
       if (!res.ok) throw new Error(data.detail || 'Google login failed');
 
-      // Save tokens
       await storeTokens({
         accessToken: data.access,
         refreshToken: data.refresh,
       });
       await AsyncStorage.setItem(USER_CACHE_KEY, JSON.stringify(data.user));
 
-      Alert.alert('Success', 'Logged in with Google!', [
-        { text: 'Continue', onPress: () => router.replace('/home-dashboard') },
-      ]);
+      router.replace('/home-dashboard');
     } catch (err) {
       console.error('Google login error:', err);
       Alert.alert('Google Login Failed', err.message);
@@ -213,8 +201,6 @@ export default function AccountLoginScreen() {
 
     try {
       const data = await getGuestToken();
-      console.log('Guest data received:', data);
-
       if (!data.access) throw new Error('No access token returned by backend');
 
       await storeTokens({
@@ -222,9 +208,7 @@ export default function AccountLoginScreen() {
         refreshToken: data.refresh,
       });
 
-      Alert.alert('Guest Access', 'You are browsing as a guest user.', [
-        { text: 'Continue', onPress: () => router.replace('/home-dashboard') },
-      ]);
+      router.replace('/home-dashboard');
     } catch (error) {
       console.error('Guest login frontend error:', error);
       Alert.alert(
@@ -244,20 +228,17 @@ export default function AccountLoginScreen() {
   if (!fontsLoaded) return null;
 
   return (
-    <ImageBackground
-      source={require('../../assets/drop_3.png')}
-      style={styles.background}
-      resizeMode="cover"
-    >
-      <LinearGradient
-        colors={['rgba(255,255,255,0.6)', 'rgba(255,255,255,0.3)']}
-        style={StyleSheet.absoluteFillObject}
-      />
-      <KeyboardAwareScrollView
-        contentContainerStyle={styles.scrollContainer}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={{ flex: 1 }}>
+      <ImageBackground
+        source={require('../../assets/drop_3.png')}
+        style={styles.background}
+        resizeMode="cover"
       >
-        <View style={styles.container}>
+        <LinearGradient
+          colors={['rgba(255,255,255,0.6)', 'rgba(255,255,255,0.3)']}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <View style={styles.centerContainer}>
           <Image
             source={require('../../assets/logo.png')}
             style={styles.logo}
@@ -269,7 +250,6 @@ export default function AccountLoginScreen() {
               Sign in to enjoy delicious canteen meals
             </Text>
 
-            {/* Email */}
             <View style={styles.inputWrapper}>
               <Ionicons name="mail-outline" size={20} color="#888" />
               <TextInput
@@ -285,7 +265,6 @@ export default function AccountLoginScreen() {
               <Text style={styles.errorText}>{errors.email}</Text>
             )}
 
-            {/* Password */}
             <View style={styles.inputWrapper}>
               <Ionicons name="lock-closed-outline" size={20} color="#888" />
               <TextInput
@@ -309,7 +288,10 @@ export default function AccountLoginScreen() {
               <Text style={styles.errorText}>{errors.password}</Text>
             )}
 
-            {/* Login Button */}
+            {errors.general && (
+              <Text style={styles.errorText}>{errors.general}</Text>
+            )}
+
             <TouchableOpacity
               style={styles.loginButton}
               onPress={handleLogin}
@@ -322,7 +304,6 @@ export default function AccountLoginScreen() {
               )}
             </TouchableOpacity>
 
-            {/* Google Button */}
             <TouchableOpacity
               style={styles.googleButton}
               disabled={!request || googleLoading}
@@ -341,7 +322,6 @@ export default function AccountLoginScreen() {
               </Text>
             </TouchableOpacity>
 
-            {/* Guest Button */}
             <TouchableOpacity
               style={styles.guestButton}
               onPress={handleGuestEntry}
@@ -356,7 +336,6 @@ export default function AccountLoginScreen() {
               )}
             </TouchableOpacity>
 
-            {/* Links */}
             <TouchableOpacity
               onPress={() => router.push('/account-password-reset')}
             >
@@ -373,36 +352,41 @@ export default function AccountLoginScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </KeyboardAwareScrollView>
-    </ImageBackground>
+      </ImageBackground>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  background: { flex: 1 },
-  scrollContainer: { flexGrow: 1, paddingHorizontal: 25, paddingVertical: 40 },
-  container: { alignItems: 'center', justifyContent: 'flex-start', flex: 1 },
-  logo: { width: 180, height: 180, marginTop: 35 },
+  background: { flex: 1, width: '100%', height: '100%' },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: '5%',
+  },
+  logo: { width: '50%', height: 120, marginBottom: 20 },
   title: {
     fontSize: 28,
     fontFamily: 'Roboto_900Black',
     color: '#333',
     marginBottom: 2,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 15,
     color: '#666',
-    marginBottom: 30,
-    textAlign: 'left',
+    marginBottom: 20,
+    textAlign: 'center',
     fontFamily: 'Roboto_400Regular',
   },
   card: {
     width: '100%',
     backgroundColor: 'rgba(255,255,255,0.95)',
     borderRadius: 20,
-    padding: 25,
+    padding: 20,
     elevation: 3,
-    marginTop: 25,
+    alignItems: 'center',
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -413,6 +397,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     marginBottom: 15,
     backgroundColor: '#F5F5F5',
+    width: '100%',
   },
   input: {
     flex: 1,
@@ -428,6 +413,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     marginVertical: 10,
+    width: '100%',
   },
   loginText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
   googleButton: {
@@ -440,6 +426,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     marginBottom: 15,
+    width: '100%',
   },
   googleIcon: { width: 22, height: 22, marginRight: 10 },
   googleText: { fontSize: 16, fontFamily: 'Roboto_700Bold', color: '#333' },
@@ -450,6 +437,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     marginBottom: 15,
+    width: '100%',
   },
   guestText: { fontSize: 16, fontFamily: 'Roboto_700Bold', color: '#FF8C00' },
   linkText: {

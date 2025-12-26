@@ -1,18 +1,22 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
+  ImageBackground,
+  SafeAreaView,
 } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function BiometricFaceEnrollmentScreen() {
   const router = useRouter();
   const { autoPrompt } = useLocalSearchParams();
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (autoPrompt === 'true') {
@@ -22,89 +26,137 @@ export default function BiometricFaceEnrollmentScreen() {
 
   const handleFaceScan = async () => {
     try {
+      setLoading(true);
+
       const compatible = await LocalAuthentication.hasHardwareAsync();
       if (!compatible) {
-        Alert.alert(
-          'Error',
-          'Face or fingerprint scanner not available on this device.'
-        );
+        setLoading(false);
         return;
       }
 
       const enrolled = await LocalAuthentication.isEnrolledAsync();
       if (!enrolled) {
-        Alert.alert(
-          'Error',
-          'No biometrics enrolled. Please set up Face ID or fingerprint first.'
-        );
+        setLoading(false);
         return;
       }
 
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Scan your fingerprint to continue',
+        promptMessage: 'Verify with fingerprint',
         fallbackLabel: 'Use Passcode',
       });
 
       if (result.success) {
-        Alert.alert('Success', 'verified successfully!');
-        router.push('/(tabs)/home-dashboard'); // ✅ Navigate to main app
-      } else {
-        Alert.alert('Failed', 'scan failed. Try again.');
+        router.replace('/(tabs)/home-dashboard');
       }
     } catch (error) {
-      Alert.alert('Error', error.message);
+      console.log(error);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Fingerprint Scan</Text>
-      <Text style={styles.subtitle}>
-        Scan Fingerprint to verify your identity
-      </Text>
-
-      <TouchableOpacity style={styles.button} onPress={handleFaceScan}>
-        <Text style={styles.buttonText}>Start Finger Scan</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        onPress={() => router.back()}
-        style={styles.cancelButton}
+    <SafeAreaView style={{ flex: 1 }}>
+      <ImageBackground
+        source={require('../../assets/drop_3.png')}
+        style={styles.background}
+        resizeMode="cover"
       >
-        <Text style={styles.cancelText}>Cancel</Text>
-      </TouchableOpacity>
+        <LinearGradient
+          colors={['rgba(255,255,255,0.7)', 'rgba(255,255,255,0.4)']}
+          style={StyleSheet.absoluteFillObject}
+        />
 
-      <ActivityIndicator
-        size="large"
-        color="#FF8C00"
-        style={{ marginTop: 30 }}
-      />
-    </View>
+        <View style={styles.centerContainer}>
+          <View style={styles.card}>
+            <Ionicons
+              name="finger-print-outline"
+              size={70}
+              color="#FF8C00"
+              style={{ marginBottom: 15 }}
+            />
+
+            <Text style={styles.title}>Fingerprint Verification</Text>
+            <Text style={styles.subtitle}>
+              Verify your identity to continue
+            </Text>
+
+            <TouchableOpacity
+              style={styles.scanButton}
+              onPress={handleFaceScan}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.scanText}>Scan Fingerprint</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => router.replace('/account-login')}
+              style={styles.cancelButton}
+            >
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ImageBackground>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  background: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
+    paddingHorizontal: '6%',
   },
-  title: { fontSize: 28, fontWeight: 'bold', marginBottom: 10, color: '#333' },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 40,
+  card: {
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderRadius: 22,
+    padding: 28,
+    alignItems: 'center',
+    elevation: 4,
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#333',
+    marginBottom: 6,
     textAlign: 'center',
   },
-  button: {
+  subtitle: {
+    fontSize: 15,
+    color: '#666',
+    marginBottom: 30,
+    textAlign: 'center',
+  },
+  scanButton: {
     backgroundColor: '#FF8C00',
     paddingVertical: 14,
-    paddingHorizontal: 40,
-    borderRadius: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 18,
   },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  cancelButton: { marginTop: 20 },
-  cancelText: { color: '#888', fontSize: 16 },
+  scanText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  cancelButton: {
+    paddingVertical: 8,
+  },
+  cancelText: {
+    fontSize: 15,
+    color: '#999',
+  },
 });

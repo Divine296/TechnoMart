@@ -1,6 +1,7 @@
 // context/NotificationContext.js
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { fetchNotifications } from '../api/api'; // we'll create this API function
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { fetchNotifications, ACCESS_TOKEN_KEY } from '../api/api';
 
 const NotificationContext = createContext();
 
@@ -13,14 +14,26 @@ export const NotificationProvider = ({ children }) => {
   const loadNotifications = async () => {
     try {
       setLoading(true);
-      const data = await fetchNotifications(); // fetch from backend
+
+      // ✅ Check if user has a valid access token
+      const token = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
+      if (!token) {
+        setNotifications([]); // No token, empty notifications
+        return;
+      }
+
+      // Fetch notifications only if token exists
+      const data = await fetchNotifications();
+
       // Optional: filter only menu updates
       const menuUpdates = data.filter(
         (n) => n.type === 'new' || n.type === 'sold'
       );
+
       setNotifications(menuUpdates);
     } catch (err) {
       console.error('Failed to load notifications:', err);
+      setNotifications([]);
     } finally {
       setLoading(false);
     }

@@ -42,12 +42,11 @@ export default function ComboMeals() {
     try {
       const items = await fetchMenuItems();
       const filtered = items.filter(
-        (item) =>
-          item.category && item.category.toLowerCase().includes('drinks')
+        (item) => item.category && item.category.toLowerCase() === 'meal'
       );
       setMenuItems(filtered);
     } catch (error) {
-      console.error('Error fetching Drinks:', error);
+      console.error('Error fetching meals:', error);
     } finally {
       setLoading(false);
     }
@@ -64,7 +63,7 @@ export default function ComboMeals() {
             fontFamily: 'Roboto_700Bold',
           }}
         >
-          Loading Drinks...
+          Loading Meals...
         </Text>
       </View>
     );
@@ -126,13 +125,13 @@ export default function ComboMeals() {
             <TouchableOpacity onPress={() => router.back()}>
               <Ionicons name="arrow-back" size={26} color="black" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Drinks</Text>
+            <Text style={styles.headerTitle}>Meals</Text>
             <Ionicons name="fast-food-outline" size={26} color="black" />
           </View>
         </View>
       </ImageBackground>
 
-      {/* Combo snack List */}
+      {/* Combo Meals List */}
       {menuItems.length > 0 ? (
         <FlatList
           data={menuItems}

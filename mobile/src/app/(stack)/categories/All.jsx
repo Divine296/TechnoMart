@@ -1,4 +1,3 @@
-// ComboMeals.jsx
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -19,12 +18,12 @@ import {
   Roboto_700Bold,
 } from '@expo-google-fonts/roboto';
 import { useCart } from '../../../context/CartContext';
-import { fetchMenuItems } from '../../../api/api';
+import { fetchMenuItems, getGuestToken } from '../../../api/api';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 40) / 2;
 
-export default function ComboMeals() {
+export default function All() {
   const router = useRouter();
   const { cart, addToCart, decreaseQuantity } = useCart();
   const [menuItems, setMenuItems] = useState([]);
@@ -36,20 +35,22 @@ export default function ComboMeals() {
   });
 
   useEffect(() => {
-    loadComboMeals();
+    loadAllItems();
   }, []);
 
-  const loadComboMeals = async () => {
+  const loadAllItems = async () => {
     try {
-      const items = await fetchMenuItems();
-      const filtered = items.filter(
-        (item) =>
-          item.category &&
-          item.category.toLowerCase().includes('meals')
-      );
-      setMenuItems(filtered);
+      let items = await fetchMenuItems();
+
+      if (!items || items.length === 0) {
+        await getGuestToken();
+        items = await fetchMenuItems();
+      }
+
+      setMenuItems(items || []);
     } catch (error) {
-      console.error('Error fetching meals:', error);
+      console.error('Error fetching items:', error);
+      setMenuItems([]);
     } finally {
       setLoading(false);
     }
@@ -59,8 +60,14 @@ export default function ComboMeals() {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#e67e22" />
-        <Text style={{ marginTop: 8, color: '#e67e22', fontFamily: 'Roboto_700Bold' }}>
-          Loading Combo Meals...
+        <Text
+          style={{
+            marginTop: 8,
+            color: '#e67e22',
+            fontFamily: 'Roboto_700Bold',
+          }}
+        >
+          Loading Items...
         </Text>
       </View>
     );
@@ -100,14 +107,6 @@ export default function ComboMeals() {
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  const handleCheckout = () => {
-    router.push('/customer-cart');
-  };
-
-  const handleAddMoreItems = () => {
-    router.push('/(tabs)');
-  };
-
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -122,13 +121,13 @@ export default function ComboMeals() {
             <TouchableOpacity onPress={() => router.back()}>
               <Ionicons name="arrow-back" size={26} color="black" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Meals</Text>
+            <Text style={styles.headerTitle}>All Items</Text>
             <Ionicons name="fast-food-outline" size={26} color="black" />
           </View>
         </View>
       </ImageBackground>
 
-      {/* Combo Meals List */}
+      {/* All Items List */}
       {menuItems.length > 0 ? (
         <FlatList
           data={menuItems}
@@ -144,7 +143,7 @@ export default function ComboMeals() {
       ) : (
         <View style={styles.centered}>
           <Text style={{ fontFamily: 'Roboto_700Bold', color: '#555' }}>
-            No Combo Meals found.
+            No items found.
           </Text>
         </View>
       )}
@@ -152,14 +151,17 @@ export default function ComboMeals() {
       {/* Floating Cart */}
       {total > 0 && (
         <View style={styles.floatingContainer}>
-          <TouchableOpacity style={styles.floatingCart} onPress={handleCheckout}>
+          <TouchableOpacity
+            style={styles.floatingCart}
+            onPress={() => router.push('/customer-cart')}
+          >
             <Ionicons name="cart-outline" size={22} color="#fff" />
             <Text style={styles.cartText}>₱{total} • Checkout</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.addMoreBtn}
-            onPress={handleAddMoreItems}
+            onPress={() => router.push('/(tabs)/home-dashboard')}
           >
             <Text style={styles.addMoreText}>+ Add More Items</Text>
           </TouchableOpacity>
@@ -273,14 +275,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     elevation: 3,
   },
-  addMoreText: {
-    color: '#fff',
-    fontFamily: 'Roboto_700Bold',
-    fontSize: 16,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  addMoreText: { color: '#fff', fontFamily: 'Roboto_700Bold', fontSize: 16 },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 });

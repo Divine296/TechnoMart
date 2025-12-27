@@ -96,7 +96,6 @@ export default function HomeDashboardScreen() {
     try {
       const backend = await fetchNotifications();
       setMenuNotifications(backend || []);
-      // Identify new notifications for highlighting
       const read = (await AsyncStorage.getItem('@read_notifications')) || '[]';
       const readIds = JSON.parse(read);
       const newIds = backend
@@ -175,7 +174,7 @@ export default function HomeDashboardScreen() {
   const markNotificationsRead = async () => {
     const allIds = menuNotifications.map((n) => n.id);
     await AsyncStorage.setItem('@read_notifications', JSON.stringify(allIds));
-    setNewNotifications([]); // remove highlight
+    setNewNotifications([]);
   };
 
   return (
@@ -197,7 +196,7 @@ export default function HomeDashboardScreen() {
                     openDropdown === 'notifications' ? null : 'notifications'
                   );
                   if (openDropdown !== 'notifications') {
-                    markNotificationsRead(); // mark as read when opening dropdown
+                    markNotificationsRead();
                   }
                 }}
               >

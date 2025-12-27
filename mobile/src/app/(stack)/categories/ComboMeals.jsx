@@ -44,8 +44,7 @@ export default function ComboMeals() {
       const items = await fetchMenuItems();
       const filtered = items.filter(
         (item) =>
-          item.category &&
-          item.category.toLowerCase().includes('combo meals')
+          item.category && item.category.toLowerCase().includes('combo meals')
       );
       setMenuItems(filtered);
     } catch (error) {
@@ -59,7 +58,13 @@ export default function ComboMeals() {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#e67e22" />
-        <Text style={{ marginTop: 8, color: '#e67e22', fontFamily: 'Roboto_700Bold' }}>
+        <Text
+          style={{
+            marginTop: 8,
+            color: '#e67e22',
+            fontFamily: 'Roboto_700Bold',
+          }}
+        >
           Loading Combo Meals...
         </Text>
       </View>
@@ -152,7 +157,10 @@ export default function ComboMeals() {
       {/* Floating Cart */}
       {total > 0 && (
         <View style={styles.floatingContainer}>
-          <TouchableOpacity style={styles.floatingCart} onPress={handleCheckout}>
+          <TouchableOpacity
+            style={styles.floatingCart}
+            onPress={handleCheckout}
+          >
             <Ionicons name="cart-outline" size={22} color="#fff" />
             <Text style={styles.cartText}>₱{total} • Checkout</Text>
           </TouchableOpacity>

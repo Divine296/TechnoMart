@@ -3,10 +3,8 @@ import {
   Animated,
   Dimensions,
   FlatList,
-  Image,
   Modal,
   Pressable,
-  Text,
   View,
 } from 'react-native';
 import {
@@ -14,28 +12,10 @@ import {
   Roboto_700Bold,
   useFonts,
 } from '@expo-google-fonts/roboto';
-import { LinearGradient } from 'expo-linear-gradient';
+import RecommendedItem from './RecommendedItem';
 import { cn } from '../styles/cn';
 
 const { width } = Dimensions.get('window');
-
-const formatCurrency = (value) => {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) {
-    return 'PHP --';
-  }
-  return `PHP ${numeric.toFixed(2)}`;
-};
-
-const imageSource = (image) => {
-  if (!image) {
-    return require('../../assets/reco1.jpg');
-  }
-  if (typeof image === 'string') {
-    return { uri: image };
-  }
-  return image;
-};
 
 export default function Recommended({ items = [] }) {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -75,9 +55,7 @@ export default function Recommended({ items = [] }) {
   }, [items]);
 
   useEffect(() => {
-    if (focusedItem || data.length <= 1) {
-      return undefined;
-    }
+    if (focusedItem || data.length <= 1) return;
 
     autoSlideRef.current = setInterval(() => {
       setActiveIndex((current) => {
@@ -91,29 +69,21 @@ export default function Recommended({ items = [] }) {
     }, 5000);
 
     return () => {
-      if (autoSlideRef.current) {
-        clearInterval(autoSlideRef.current);
-      }
+      if (autoSlideRef.current) clearInterval(autoSlideRef.current);
     };
   }, [data.length, focusedItem]);
 
   useEffect(
     () => () => {
-      if (autoSlideRef.current) {
-        clearInterval(autoSlideRef.current);
-      }
+      if (autoSlideRef.current) clearInterval(autoSlideRef.current);
     },
     []
   );
 
-  if (!fontsLoaded || data.length === 0) {
-    return null;
-  }
+  if (!fontsLoaded || data.length === 0) return null;
 
   const handleLongPress = (item) => {
-    if (autoSlideRef.current) {
-      clearInterval(autoSlideRef.current);
-    }
+    if (autoSlideRef.current) clearInterval(autoSlideRef.current);
     setFocusedItem(item);
 
     scaleAnim.setValue(0);
@@ -134,16 +104,10 @@ export default function Recommended({ items = [] }) {
     ]).start();
   };
 
-  const handleClosePopup = () => {
-    setFocusedItem(null);
-  };
+  const handleClosePopup = () => setFocusedItem(null);
 
   return (
     <View className="mt-4 px-2">
-      <Text className="font-heading text-xl text-neutral-900">
-        Recommended For You
-      </Text>
-      <View className="mt-1 h-1 w-14 rounded-full bg-primary-500" />
       <FlatList
         ref={flatListRef}
         data={data}
@@ -158,37 +122,11 @@ export default function Recommended({ items = [] }) {
           const index = Math.round(
             e.nativeEvent.contentOffset.x / (width * 0.7 + 16)
           );
-          if (Number.isFinite(index)) {
-            setActiveIndex(index);
-          }
+          if (Number.isFinite(index)) setActiveIndex(index);
         }}
         renderItem={({ item }) => (
           <Pressable onLongPress={() => handleLongPress(item)}>
-            <View
-              className="mx-2 overflow-hidden rounded-2xl shadow-lg"
-              style={{
-                width: width * 0.7,
-                height: width * 0.45,
-                elevation: 5,
-              }} // NativeWind: dynamic card sizing & Android elevation require inline style
-            >
-              <Image
-                source={imageSource(item.image)}
-                className="h-full w-full"
-              />
-              <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.6)']}
-                style={{
-                  position: 'absolute',
-                  bottom: 0,
-                  width: '100%',
-                  height: '40%',
-                }} // NativeWind: expo-linear-gradient requires style prop
-              />
-              <Text className="absolute bottom-3 left-3 font-heading text-lg text-white">
-                {item.title}
-              </Text>
-            </View>
+            <RecommendedItem food={item} />
           </Pressable>
         )}
         keyExtractor={(item) => item.id}
@@ -215,42 +153,11 @@ export default function Recommended({ items = [] }) {
             <Animated.View
               className="items-center rounded-2xl bg-white p-4 shadow-xl"
               style={[
-                {
-                  width: width * 0.8,
-                  elevation: 10,
-                }, // NativeWind: popup sizing & Android elevation require inline style
-                {
-                  transform: [{ scale: scaleAnim }],
-                  opacity: opacityAnim,
-                },
+                { width: width * 0.8, elevation: 10 },
+                { transform: [{ scale: scaleAnim }], opacity: opacityAnim },
               ]}
             >
-              <Image
-                source={imageSource(focusedItem.image)}
-                className="mb-4 w-full rounded-xl"
-                style={{ height: width * 0.5 }} // NativeWind: dynamic image height requires inline style
-              />
-              <View className="items-center">
-                <Text className="mb-1.5 font-heading text-xl text-neutral-900">
-                  {focusedItem.title}
-                </Text>
-                <Text className="mb-1 text-lg text-warning-500">
-                  {formatCurrency(focusedItem.price)}
-                </Text>
-                {Number.isFinite(focusedItem.rating) ? (
-                  <Text className="text-sm text-neutral-500">
-                    Rating: {focusedItem.rating.toFixed(1)}
-                    {Number.isFinite(focusedItem.reviews)
-                      ? ` (${focusedItem.reviews} reviews)`
-                      : ''}
-                  </Text>
-                ) : null}
-                {focusedItem.description ? (
-                  <Text className="mt-1.5 text-center text-sm text-neutral-600">
-                    {focusedItem.description}
-                  </Text>
-                ) : null}
-              </View>
+              <RecommendedItem food={focusedItem} />
             </Animated.View>
           </Pressable>
         </Modal>

@@ -1,4 +1,3 @@
-// ComboMeals.jsx
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -24,7 +23,7 @@ import { fetchMenuItems } from '../../../api/api';
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 40) / 2;
 
-export default function ComboMeals() {
+export default function Snacks() {
   const router = useRouter();
   const { cart, addToCart, decreaseQuantity } = useCart();
   const [menuItems, setMenuItems] = useState([]);
@@ -36,17 +35,17 @@ export default function ComboMeals() {
   });
 
   useEffect(() => {
-    loadComboMeals();
+    loadSnacks();
   }, []);
 
-  const loadComboMeals = async () => {
+  const loadSnacks = async () => {
     try {
       const items = await fetchMenuItems();
-      const filtered = items.filter(
-        (item) =>
-          item.category &&
-          item.category.toLowerCase().includes('snacks')
-      );
+      const filtered = items
+        .filter(
+          (item) => item.category && item.category.toLowerCase() === 'snacks'
+        )
+        .sort((a, b) => a.price - b.price); // sort by price ascending
       setMenuItems(filtered);
     } catch (error) {
       console.error('Error fetching snacks:', error);
@@ -59,8 +58,14 @@ export default function ComboMeals() {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#e67e22" />
-        <Text style={{ marginTop: 8, color: '#e67e22', fontFamily: 'Roboto_700Bold' }}>
-          Loading Combo snacks...
+        <Text
+          style={{
+            marginTop: 8,
+            color: '#e67e22',
+            fontFamily: 'Roboto_700Bold',
+          }}
+        >
+          Loading Snacks...
         </Text>
       </View>
     );
@@ -100,13 +105,8 @@ export default function ComboMeals() {
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  const handleCheckout = () => {
-    router.push('/customer-cart');
-  };
-
-  const handleAddMoreItems = () => {
-    router.push('/(tabs)');
-  };
+  const handleCheckout = () => router.push('/customer-cart');
+  const handleAddMoreItems = () => router.push('/(tabs)/home-dashboard');
 
   return (
     <View style={styles.container}>
@@ -122,13 +122,13 @@ export default function ComboMeals() {
             <TouchableOpacity onPress={() => router.back()}>
               <Ionicons name="arrow-back" size={26} color="black" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>snacks</Text>
+            <Text style={styles.headerTitle}>Snacks</Text>
             <Ionicons name="fast-food-outline" size={26} color="black" />
           </View>
         </View>
       </ImageBackground>
 
-      {/* Combo snack List */}
+      {/* Snacks List */}
       {menuItems.length > 0 ? (
         <FlatList
           data={menuItems}
@@ -144,7 +144,7 @@ export default function ComboMeals() {
       ) : (
         <View style={styles.centered}>
           <Text style={{ fontFamily: 'Roboto_700Bold', color: '#555' }}>
-            No Combo Meals found.
+            No Snacks found.
           </Text>
         </View>
       )}
@@ -152,7 +152,10 @@ export default function ComboMeals() {
       {/* Floating Cart */}
       {total > 0 && (
         <View style={styles.floatingContainer}>
-          <TouchableOpacity style={styles.floatingCart} onPress={handleCheckout}>
+          <TouchableOpacity
+            style={styles.floatingCart}
+            onPress={handleCheckout}
+          >
             <Ionicons name="cart-outline" size={22} color="#fff" />
             <Text style={styles.cartText}>₱{total} • Checkout</Text>
           </TouchableOpacity>

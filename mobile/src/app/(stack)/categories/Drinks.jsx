@@ -23,7 +23,7 @@ import { fetchMenuItems } from '../../../api/api';
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 40) / 2;
 
-export default function ComboMeals() {
+export default function Drinks() {
   const router = useRouter();
   const { cart, addToCart, decreaseQuantity } = useCart();
   const [menuItems, setMenuItems] = useState([]);
@@ -35,16 +35,17 @@ export default function ComboMeals() {
   });
 
   useEffect(() => {
-    loadComboMeals();
+    loadDrinks();
   }, []);
 
-  const loadComboMeals = async () => {
+  const loadDrinks = async () => {
     try {
       const items = await fetchMenuItems();
-      const filtered = items.filter(
-        (item) =>
-          item.category && item.category.toLowerCase().includes('drinks')
-      );
+      const filtered = items
+        .filter(
+          (item) => item.category && item.category.toLowerCase() === 'drinks'
+        )
+        .sort((a, b) => a.price - b.price); // sort by price ascending
       setMenuItems(filtered);
     } catch (error) {
       console.error('Error fetching Drinks:', error);
@@ -104,13 +105,8 @@ export default function ComboMeals() {
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  const handleCheckout = () => {
-    router.push('/customer-cart');
-  };
-
-  const handleAddMoreItems = () => {
-    router.push('/(tabs)');
-  };
+  const handleCheckout = () => router.push('/customer-cart');
+  const handleAddMoreItems = () => router.push('/(tabs)/home-dashboard');
 
   return (
     <View style={styles.container}>
@@ -132,7 +128,7 @@ export default function ComboMeals() {
         </View>
       </ImageBackground>
 
-      {/* Combo snack List */}
+      {/* Drinks List */}
       {menuItems.length > 0 ? (
         <FlatList
           data={menuItems}
@@ -148,7 +144,7 @@ export default function ComboMeals() {
       ) : (
         <View style={styles.centered}>
           <Text style={{ fontFamily: 'Roboto_700Bold', color: '#555' }}>
-            No Combo Meals found.
+            No Drinks found.
           </Text>
         </View>
       )}

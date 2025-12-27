@@ -41,10 +41,12 @@ export default function ComboMeals() {
   const loadComboMeals = async () => {
     try {
       const items = await fetchMenuItems();
-      const filtered = items.filter(
-        (item) =>
-          item.category && item.category.toLowerCase().includes('combo meals')
-      );
+      const filtered = items
+        .filter(
+          (item) =>
+            item.category && item.category.toLowerCase() === 'combo meals'
+        )
+        .sort((a, b) => a.price - b.price); // sort by price ascending
       setMenuItems(filtered);
     } catch (error) {
       console.error('Error fetching combo meals:', error);
@@ -104,13 +106,8 @@ export default function ComboMeals() {
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  const handleCheckout = () => {
-    router.push('/customer-cart');
-  };
-
-  const handleAddMoreItems = () => {
-    router.push('/(tabs)');
-  };
+  const handleCheckout = () => router.push('/customer-cart');
+  const handleAddMoreItems = () => router.push('/(tabs)/home-dashboard');
 
   return (
     <View style={styles.container}>

@@ -47,7 +47,8 @@ export default function All() {
         items = await fetchMenuItems();
       }
 
-      setMenuItems(items || []);
+      // Sort items by price ascending
+      setMenuItems((items || []).sort((a, b) => a.price - b.price));
     } catch (error) {
       console.error('Error fetching items:', error);
       setMenuItems([]);

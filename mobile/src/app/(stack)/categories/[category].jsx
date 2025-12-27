@@ -1,11 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, Image, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  ActivityIndicator,
+  Image,
+  TouchableOpacity,
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchMenuItems } from '../../../api/api';
 import { useCart } from '../../../context/CartContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft } from 'lucide-react-native';
+
+const normalize = (value = '') => value.toLowerCase().replace(/\s+/g, '-');
 
 export default function CategoryScreen() {
   const { category } = useLocalSearchParams();
@@ -24,7 +33,12 @@ export default function CategoryScreen() {
         setRole(parsed?.role || 'student');
 
         const menu = await fetchMenuItems();
-        const filtered = (menu || []).filter(item => item.category === category);
+
+        // ✅ FIXED: normalized comparison (NO logic removed)
+        const filtered = (menu || []).filter(
+          (item) => normalize(item.category) === normalize(category)
+        );
+
         setItems(filtered);
       } catch (err) {
         console.error('Error loading category items', err);
@@ -32,14 +46,22 @@ export default function CategoryScreen() {
         setLoading(false);
       }
     };
+
     load();
   }, [category]);
 
-  const isCatering = category === 'Catering';
+  const isCatering = normalize(category) === 'catering';
 
   if (loading || role === null) {
     return (
-      <View style={{ flex:1, justifyContent:'center', alignItems:'center', backgroundColor:'#fff7ed' }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: '#fff7ed',
+        }}
+      >
         <ActivityIndicator size="large" color="#f97316" />
       </View>
     );
@@ -47,9 +69,28 @@ export default function CategoryScreen() {
 
   if (isCatering && role !== 'faculty') {
     return (
-      <View style={{ flex:1, justifyContent:'center', alignItems:'center', padding: 16, backgroundColor:'#fff7ed' }}>
-        <Text style={{ color: '#ef4444', fontSize: 18, fontWeight: '700', marginBottom: 8 }}>Access Denied</Text>
-        <Text style={{ textAlign: 'center', color: '#6b7280', fontSize: 16 }}>You are not allowed to view Catering items.</Text>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 16,
+          backgroundColor: '#fff7ed',
+        }}
+      >
+        <Text
+          style={{
+            color: '#ef4444',
+            fontSize: 18,
+            fontWeight: '700',
+            marginBottom: 8,
+          }}
+        >
+          Access Denied
+        </Text>
+        <Text style={{ textAlign: 'center', color: '#6b7280', fontSize: 16 }}>
+          You are not allowed to view Catering items.
+        </Text>
         <TouchableOpacity
           onPress={() => router.push('/(tabs)/home-dashboard')}
           style={{
@@ -62,10 +103,12 @@ export default function CategoryScreen() {
             shadowOpacity: 0.15,
             shadowRadius: 5,
             shadowOffset: { width: 0, height: 2 },
-            elevation: 3
+            elevation: 3,
           }}
         >
-          <Text style={{ color: 'white', fontWeight: '700', fontSize: 16 }}>Back to Home</Text>
+          <Text style={{ color: 'white', fontWeight: '700', fontSize: 16 }}>
+            Back to Home
+          </Text>
         </TouchableOpacity>
       </View>
     );
@@ -78,25 +121,20 @@ export default function CategoryScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#fff7ed' }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 140 }}>
-        
-        {/* Cute Gradient Header */}
+        {/* Header */}
         <View style={{ marginBottom: 16 }}>
           <LinearGradient
             colors={['#fbbf24', '#f97316']}
-            start={[0,0]}
-            end={[1,1]}
+            start={[0, 0]}
+            end={[1, 1]}
             style={{
               borderBottomLeftRadius: 40,
               borderBottomRightRadius: 40,
               padding: 28,
               paddingTop: 50,
               marginBottom: 16,
-              shadowColor: '#000',
-              shadowOpacity: 0.1,
-              shadowRadius: 10,
-              shadowOffset: { width: 0, height: 5 },
               elevation: 5,
-              position: 'relative'
+              position: 'relative',
             }}
           >
             <TouchableOpacity
@@ -107,16 +145,24 @@ export default function CategoryScreen() {
                 left: 16,
                 backgroundColor: 'rgba(255,255,255,0.3)',
                 padding: 8,
-                borderRadius: 20
+                borderRadius: 20,
               }}
             >
               <ArrowLeft size={24} color="#fff" />
             </TouchableOpacity>
 
-            <Text style={{ fontSize: 28, fontWeight: '900', color: '#fff', marginBottom: 6, letterSpacing: 1 }}>
+            <Text
+              style={{
+                fontSize: 28,
+                fontWeight: '900',
+                color: '#fff',
+                marginBottom: 6,
+              }}
+            >
               {category}
             </Text>
-            <Text style={{ fontSize: 16, color: '#fff', opacity: 0.95 }}>
+
+            <Text style={{ fontSize: 16, color: '#fff' }}>
               {`Yummy options for you in the ${category} category! 🍽️`}
             </Text>
 
@@ -128,63 +174,110 @@ export default function CategoryScreen() {
                   height: 140,
                   borderRadius: 20,
                   marginTop: 16,
-                  resizeMode: 'cover',
-                  borderWidth: 2,
-                  borderColor: 'rgba(255,255,255,0.3)'
                 }}
               />
             )}
           </LinearGradient>
         </View>
 
-        {/* Items List with Cute Cards */}
+        {/* Items */}
         {items.length === 0 ? (
-          <Text style={{ color: '#6b7280', fontSize: 16, textAlign:'center', marginTop:20 }}>No items found in this category.</Text>
+          <Text
+            style={{
+              color: '#6b7280',
+              fontSize: 16,
+              textAlign: 'center',
+              marginTop: 20,
+            }}
+          >
+            No items found in this category.
+          </Text>
         ) : (
-          items.map(item => {
-            const qty = cart.find(i => i.id === item.id)?.quantity || 0;
+          items.map((item) => {
+            const qty = cart.find((i) => i.id === item.id)?.quantity || 0;
             return (
               <View
                 key={item.id}
                 style={{
                   flexDirection: 'row',
-                  alignItems: 'center',
                   padding: 16,
                   backgroundColor: '#fff4e6',
                   borderRadius: 20,
-                  marginHorizontal:16,
+                  marginHorizontal: 16,
                   marginBottom: 12,
-                  shadowColor: '#000',
-                  shadowOpacity: 0.05,
-                  shadowRadius: 6,
-                  shadowOffset: { width: 0, height: 3 },
-                  elevation: 2,
-                  borderWidth: 1,
-                  borderColor: '#ffd699'
                 }}
               >
                 {item.image && (
                   <Image
                     source={{ uri: item.image }}
-                    style={{ width: 70, height: 70, borderRadius: 20, marginRight: 16 }}
+                    style={{
+                      width: 70,
+                      height: 70,
+                      borderRadius: 20,
+                      marginRight: 16,
+                    }}
                   />
                 )}
+
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 17, fontWeight: '700', color: '#f97316' }}>
-                    {item.name} {item.available === false && <Text style={{ color:'#ef4444' }}> (Sold Out)</Text>}
+                  <Text
+                    style={{
+                      fontSize: 17,
+                      fontWeight: '700',
+                      color: '#f97316',
+                    }}
+                  >
+                    {item.name}
+                    {item.available === false && (
+                      <Text style={{ color: '#ef4444' }}> (Sold Out)</Text>
+                    )}
                   </Text>
-                  <Text style={{ color: '#6b7280', fontSize: 14, marginTop: 4 }}>{item.description}</Text>
+                  <Text style={{ color: '#6b7280', fontSize: 14 }}>
+                    {item.description}
+                  </Text>
                 </View>
-                <View style={{ alignItems:'flex-end' }}>
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#fbbf24' }}>₱{item.price}</Text>
+
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: '700',
+                      color: '#fbbf24',
+                    }}
+                  >
+                    ₱{item.price}
+                  </Text>
+
                   {item.available && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
-                      <TouchableOpacity onPress={() => decreaseQuantity(item.id)} style={{ backgroundColor: '#f97316', padding: 6, borderRadius: 20, marginHorizontal: 4 }}>
-                        <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>-</Text>
+                    <View style={{ flexDirection: 'row', marginTop: 8 }}>
+                      <TouchableOpacity
+                        onPress={() => decreaseQuantity(item.id)}
+                        style={{
+                          backgroundColor: '#f97316',
+                          padding: 6,
+                          borderRadius: 20,
+                        }}
+                      >
+                        <Text style={{ color: '#fff', fontWeight: '700' }}>
+                          -
+                        </Text>
                       </TouchableOpacity>
-                      <Text style={{ minWidth: 24, textAlign: 'center', fontWeight: '700', fontSize:16 }}>{qty}</Text>
-                      <TouchableOpacity onPress={() => addToCart(item)} style={{ backgroundColor: '#f97316', padding: 6, borderRadius: 20, marginHorizontal: 4 }}>
-                        <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>+</Text>
+
+                      <Text style={{ marginHorizontal: 8, fontWeight: '700' }}>
+                        {qty}
+                      </Text>
+
+                      <TouchableOpacity
+                        onPress={() => addToCart(item)}
+                        style={{
+                          backgroundColor: '#f97316',
+                          padding: 6,
+                          borderRadius: 20,
+                        }}
+                      >
+                        <Text style={{ color: '#fff', fontWeight: '700' }}>
+                          +
+                        </Text>
                       </TouchableOpacity>
                     </View>
                   )}
@@ -195,45 +288,21 @@ export default function CategoryScreen() {
         )}
       </ScrollView>
 
-      {/* Floating Checkout & Add More with Cute Gradient */}
       {total > 0 && (
-        <View style={{ position: 'absolute', bottom: 20, left: 20, right: 20, gap: 12 }}>
+        <View style={{ position: 'absolute', bottom: 20, left: 20, right: 20 }}>
           <LinearGradient
             colors={['#f97316', '#fbbf24']}
-            start={[0,0]}
-            end={[1,1]}
-            style={{ borderRadius: 30, overflow: 'hidden' }}
+            style={{ borderRadius: 30 }}
           >
             <TouchableOpacity
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'center',
-                alignItems: 'center',
-                paddingVertical: 16,
-              }}
+              style={{ paddingVertical: 16, alignItems: 'center' }}
               onPress={handleCheckout}
             >
-              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 18 }}>₱{total} • Checkout 🍽️</Text>
+              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 18 }}>
+                ₱{total} • Checkout 🍽️
+              </Text>
             </TouchableOpacity>
           </LinearGradient>
-
-          <TouchableOpacity
-            style={{
-              backgroundColor: '#34d399',
-              paddingVertical: 14,
-              borderRadius: 30,
-              width: '100%',
-              alignItems: 'center',
-              shadowColor: '#000',
-              shadowOpacity: 0.1,
-              shadowRadius: 5,
-              shadowOffset: { width: 0, height: 3 },
-              elevation: 3,
-            }}
-            onPress={handleAddMoreItems}
-          >
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 18 }}>+ Add More Items 🛒</Text>
-          </TouchableOpacity>
         </View>
       )}
     </View>

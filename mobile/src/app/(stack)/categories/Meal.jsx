@@ -23,7 +23,7 @@ import { fetchMenuItems } from '../../../api/api';
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 40) / 2;
 
-export default function ComboMeals() {
+export default function MealScreen() {
   const router = useRouter();
   const { cart, addToCart, decreaseQuantity } = useCart();
   const [menuItems, setMenuItems] = useState([]);
@@ -35,15 +35,15 @@ export default function ComboMeals() {
   });
 
   useEffect(() => {
-    loadComboMeals();
+    loadMeals();
   }, []);
 
-  const loadComboMeals = async () => {
+  const loadMeals = async () => {
     try {
       const items = await fetchMenuItems();
-      const filtered = items.filter(
-        (item) => item.category && item.category.toLowerCase() === 'meal'
-      );
+      const filtered = (items || [])
+        .filter((item) => item.category?.toLowerCase() === 'meal')
+        .sort((a, b) => a.price - b.price);
       setMenuItems(filtered);
     } catch (error) {
       console.error('Error fetching meals:', error);
@@ -108,7 +108,7 @@ export default function ComboMeals() {
   };
 
   const handleAddMoreItems = () => {
-    router.push('/(tabs)');
+    router.push('/(tabs)/home-dashboard');
   };
 
   return (
@@ -131,7 +131,7 @@ export default function ComboMeals() {
         </View>
       </ImageBackground>
 
-      {/* Combo Meals List */}
+      {/* Meal List */}
       {menuItems.length > 0 ? (
         <FlatList
           data={menuItems}
@@ -147,7 +147,7 @@ export default function ComboMeals() {
       ) : (
         <View style={styles.centered}>
           <Text style={{ fontFamily: 'Roboto_700Bold', color: '#555' }}>
-            No Combo Meals found.
+            No Meals found.
           </Text>
         </View>
       )}
@@ -279,14 +279,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     elevation: 3,
   },
-  addMoreText: {
-    color: '#fff',
-    fontFamily: 'Roboto_700Bold',
-    fontSize: 16,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  addMoreText: { color: '#fff', fontFamily: 'Roboto_700Bold', fontSize: 16 },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 });

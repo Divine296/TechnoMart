@@ -1,5 +1,5 @@
 // screens/FAQsScreen.jsx
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,16 +8,25 @@ import {
   LayoutAnimation,
   UIManager,
   Platform,
-  TextInput,
   StyleSheet,
+  ImageBackground,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import * as Linking from 'expo-linking'; // ✅ Added for Telegram link
+import * as Linking from 'expo-linking';
+import {
+  useFonts,
+  Roboto_700Bold,
+  Roboto_500Medium,
+  Roboto_400Regular,
+} from '@expo-google-fonts/roboto';
 
-// ✅ Enable LayoutAnimation on Android
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+// Enable LayoutAnimation on Android
+if (
+  Platform.OS === 'android' &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
@@ -35,7 +44,7 @@ const QAItem = ({ id, question, answer, expanded, onToggle }) => {
         <Feather
           name={expanded ? 'chevron-up' : 'chevron-down'}
           size={20}
-          color="#F07F13"
+          color="#f97316"
         />
       </TouchableOpacity>
       {expanded && (
@@ -71,22 +80,12 @@ const DEFAULT_FAQS = [
     q: 'What payment methods are supported?',
     a: 'You can pay using cash on delivery, GCash, Maya, or credit/debit cards.',
   },
-  {
-    id: 'payment-points',
-    q: 'How do I use my credit points?',
-    a: 'At checkout, toggle “Use Points” to apply your earned points to reduce your subtotal.',
-  },
 
   // Refunds
   {
     id: 'refunds',
     q: 'How do refunds work?',
     a: 'Refunds are issued back to your original payment method within 3–5 business days after approval. You’ll get an email once processed.',
-  },
-  {
-    id: 'refund-delay',
-    q: 'Why hasn’t my refund arrived yet?',
-    a: 'Refunds can take a few business days. If delayed beyond 5 days, contact support with your order ID.',
   },
 
   // Delivery
@@ -95,22 +94,12 @@ const DEFAULT_FAQS = [
     q: 'How long does delivery take?',
     a: 'Delivery usually takes 30–60 minutes depending on your location and order volume.',
   },
-  {
-    id: 'delivery-fee',
-    q: 'Are there delivery fees?',
-    a: 'Delivery fees depend on your distance from the restaurant and are displayed at checkout.',
-  },
 
   // Account
   {
     id: 'account-change',
     q: 'Can I change my account details?',
     a: 'Yes! Go to Profile → Personal Information to update your name, phone number, and email.',
-  },
-  {
-    id: 'account-delete',
-    q: 'Can I delete my account?',
-    a: 'Please contact support via Profile → Share Feedback to request account deletion.',
   },
 
   // Notifications
@@ -126,88 +115,68 @@ const DEFAULT_FAQS = [
     q: 'How do I apply promo codes?',
     a: 'At checkout, enter your promo code in the designated field to apply discounts.',
   },
-  {
-    id: 'promo-expire',
-    q: 'Why isn’t my promo code working?',
-    a: 'Promo codes may expire or have specific conditions. Check the terms and ensure your order meets them.',
-  },
 ];
 
 export default function FAQsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [query, setQuery] = useState('');
   const [expandedId, setExpandedId] = useState(null);
 
-  const filteredData = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return DEFAULT_FAQS;
-    return DEFAULT_FAQS.filter(
-      (item) =>
-        item.q.toLowerCase().includes(q) || item.a.toLowerCase().includes(q)
-    );
-  }, [query]);
+  const [fontsLoaded] = useFonts({
+    Roboto_700Bold,
+    Roboto_500Medium,
+    Roboto_400Regular,
+  });
+
+  if (!fontsLoaded) return null;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
-      <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Feather name="chevron-left" size={28} color="#F07F13" />
-        </TouchableOpacity>
-        <Text style={styles.headerText}>FAQs</Text>
-        <View style={{ width: 28 }} />
-      </View>
-
-      {/* Search */}
-      <View style={styles.searchWrapper}>
-        <Feather name="search" size={18} color="#9ca3af" />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search FAQs"
-          placeholderTextColor="#9ca3af"
-          value={query}
-          onChangeText={setQuery}
-        />
-        {query.length > 0 && (
-          <TouchableOpacity onPress={() => setQuery('')}>
-            <Feather name="x-circle" size={18} color="#9ca3af" />
-          </TouchableOpacity>
-        )}
-      </View>
+      <ImageBackground
+        source={require('../../../assets/drop_1.png')}
+        resizeMode="cover"
+        style={styles.headerBackground}
+      >
+        <View style={styles.overlay} />
+        <View style={styles.headerContainer}>
+          <View style={styles.headerTopRow}>
+            <TouchableOpacity
+              onPress={() => router.push('/(tabs)/home-dashboard')}
+            >
+              <Feather name="chevron-left" size={28} color="black" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>FAQs</Text>
+            <View style={{ width: 28 }} />
+          </View>
+        </View>
+      </ImageBackground>
 
       {/* FAQ List */}
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        {filteredData.length === 0 ? (
-          <View style={styles.emptyWrapper}>
-            <MaterialCommunityIcons
-              name="help-circle"
-              size={36}
-              color="#c6c6c6"
-            />
-            <Text style={styles.emptyText}>No results found.</Text>
-          </View>
-        ) : (
-          filteredData.map((item) => (
-            <QAItem
-              key={item.id}
-              id={item.id}
-              question={item.q}
-              answer={item.a}
-              expanded={expandedId === item.id}
-              onToggle={(id) =>
-                setExpandedId((prev) => (prev === id ? null : id))
-              }
-            />
-          ))
-        )}
+      <ScrollView contentContainerStyle={{ paddingBottom: 40, paddingTop: 16 }}>
+        {DEFAULT_FAQS.map((item) => (
+          <QAItem
+            key={item.id}
+            id={item.id}
+            question={item.q}
+            answer={item.a}
+            expanded={expandedId === item.id}
+            onToggle={(id) =>
+              setExpandedId((prev) => (prev === id ? null : id))
+            }
+          />
+        ))}
 
-        {/* ✅ Contact Support (Telegram link) */}
+        {/* Contact Support */}
         <TouchableOpacity
           style={styles.contactBtn}
           onPress={() => Linking.openURL('https://t.me/TechnoMartSupport')}
         >
-          <Text style={styles.contactText}>Contact Support</Text>
+          <Text
+            style={[styles.contactText, { fontFamily: 'Roboto_500Medium' }]}
+          >
+            Contact Support
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -215,32 +184,35 @@ export default function FAQsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
-  headerRow: {
+  container: { flex: 1, backgroundColor: '#FFE6C7' },
+  headerBackground: {
+    width: '100%',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    overflow: 'hidden',
+    paddingVertical: 20,
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(254,192,117,0.5)',
+  },
+  headerContainer: { paddingHorizontal: 16 },
+  headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#fff',
-    elevation: 2,
   },
-  headerText: { fontSize: 22, fontWeight: 'bold', color: '#0f172a' },
-  searchWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#e5e7eb',
-    marginHorizontal: 20,
-    marginTop: 16,
-    marginBottom: 16,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+  headerTitle: {
+    fontSize: 32,
+    fontFamily: 'Roboto_700Bold',
+    color: '#1F2937',
+    textAlign: 'center',
+    flex: 1,
+    marginHorizontal: 10,
   },
-  searchInput: { flex: 1, marginLeft: 8, fontSize: 14, color: '#111' },
   card: {
     backgroundColor: '#fff',
-    marginHorizontal: 20,
+    marginHorizontal: 16,
     marginBottom: 12,
     borderRadius: 16,
     padding: 16,
@@ -253,27 +225,25 @@ const styles = StyleSheet.create({
   },
   questionText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: 'Roboto_500Medium',
     color: '#0f172a',
     flex: 1,
     paddingRight: 8,
   },
   answerWrapper: { marginTop: 8 },
-  answerText: { fontSize: 14, color: '#4b5563', lineHeight: 20 },
-  emptyWrapper: { alignItems: 'center', marginTop: 60 },
-  emptyText: {
-    marginTop: 12,
+  answerText: {
     fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
+    fontFamily: 'Roboto_400Regular',
+    color: '#4b5563',
+    lineHeight: 20,
   },
   contactBtn: {
-    backgroundColor: '#F07F13',
-    marginHorizontal: 20,
+    backgroundColor: '#f97316',
+    marginHorizontal: 16,
     marginTop: 24,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
   },
-  contactText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  contactText: { color: '#fff', fontSize: 16 },
 });

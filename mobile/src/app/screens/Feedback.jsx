@@ -11,15 +11,22 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
+  ImageBackground,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { sendFeedback } from '../../api/api';
+import {
+  useFonts,
+  Roboto_700Bold,
+  Roboto_500Medium,
+  Roboto_400Regular,
+} from '@expo-google-fonts/roboto';
 
 const MAX = 500;
 const MIN = 10;
-const ORANGE = '#F07F13';
+const ORANGE = '#f97316';
 
 const Chip = ({ label, active, onPress }) => (
   <TouchableOpacity
@@ -27,7 +34,7 @@ const Chip = ({ label, active, onPress }) => (
     style={[
       styles.chip,
       {
-        backgroundColor: active ? '#FFF3E9' : 'white',
+        backgroundColor: active ? '#FFF3E9' : '#fff',
         borderColor: active ? ORANGE : '#E5E7EB',
       },
     ]}
@@ -68,34 +75,57 @@ export default function ShareFeedbackScreen() {
     }
   };
 
+  const [fontsLoaded] = useFonts({
+    Roboto_700Bold,
+    Roboto_500Medium,
+    Roboto_400Regular,
+  });
+
+  if (!fontsLoaded) return null;
+
   return (
-    <View style={{ flex: 1, backgroundColor: '#f8fafc', paddingTop: insets.top }}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
-      <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Feather name="chevron-left" size={28} color={ORANGE} />
-        </TouchableOpacity>
-        <Text style={styles.headerText}>Share Feedback</Text>
-        <View style={{ width: 28 }} />
-      </View>
+      <ImageBackground
+        source={require('../../../assets/drop_1.png')}
+        resizeMode="cover"
+        style={styles.headerBackground}
+      >
+        <View style={styles.overlay} />
+        <View style={styles.headerContainer}>
+          <View style={styles.headerTopRow}>
+            <TouchableOpacity onPress={() => router.back()}>
+              <Feather name="chevron-left" size={28} color="black" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Share Feedback</Text>
+            <View style={{ width: 28 }} />
+          </View>
+        </View>
+      </ImageBackground>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={{ padding: 10, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 40, paddingTop: 16 }}
+          keyboardShouldPersistTaps="handled"
+        >
           {/* Intro Card */}
-          <View style={[styles.card, styles.visibleCard]}>
+          <View style={styles.card}>
             <Text style={styles.cardTitle}>We value your feedback</Text>
-            <Text style={styles.grayText}>
-              Tell us what’s working well or what we can improve. Every message is read carefully.
+            <Text style={styles.cardText}>
+              Tell us what’s working well or what we can improve. Every message
+              is read carefully.
             </Text>
           </View>
 
           {/* Category Card */}
-          <View style={[styles.card, styles.visibleCard]}>
+          <View style={styles.card}>
             <Text style={styles.cardTitle}>Category</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+            <View
+              style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 }}
+            >
               {[
                 'App Experience',
                 'Food Quality',
@@ -105,13 +135,18 @@ export default function ShareFeedbackScreen() {
                 'Payment / Checkout',
                 'Other',
               ].map((c) => (
-                <Chip key={c} label={c} active={category === c} onPress={() => setCategory(c)} />
+                <Chip
+                  key={c}
+                  label={c}
+                  active={category === c}
+                  onPress={() => setCategory(c)}
+                />
               ))}
             </View>
           </View>
 
           {/* Feedback Input */}
-          <View style={[styles.card, styles.visibleCard]}>
+          <View style={styles.card}>
             <Text style={styles.cardTitle}>Your Feedback</Text>
             <TextInput
               value={text}
@@ -124,31 +159,48 @@ export default function ShareFeedbackScreen() {
               style={styles.textInput}
               editable={!loading}
             />
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-              <Text style={{ fontSize: 12, color: text.trim().length < MIN ? '#EF4444' : '#6B7280' }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                marginTop: 8,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: text.trim().length < MIN ? '#EF4444' : '#6B7280',
+                }}
+              >
                 {text.trim().length < MIN
                   ? `At least ${MIN} characters (${MIN - text.trim().length} more)`
                   : 'Looks good'}
               </Text>
-              <Text style={{ fontSize: 12, color: '#6B7280' }}>{remaining}</Text>
+              <Text style={{ fontSize: 12, color: '#6B7280' }}>
+                {remaining}
+              </Text>
             </View>
           </View>
 
           {/* Send Button */}
           <TouchableOpacity
-            style={[styles.btnOrange, { opacity: isValid && !loading ? 1 : 0.6 }]}
+            style={[
+              styles.contactBtn,
+              { opacity: isValid && !loading ? 1 : 0.6 },
+            ]}
             onPress={onSend}
             disabled={!isValid || loading}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.btnText}>Send Feedback</Text>
+              <Text style={styles.contactText}>Send Feedback</Text>
             )}
           </TouchableOpacity>
 
-          <Text style={{ marginTop: 12, fontSize: 12, color: '#6B7280', textAlign: 'center' }}>
-            By sending, you agree that your feedback may be used to improve the app experience.
+          <Text style={styles.disclaimer}>
+            By sending, you agree that your feedback may be used to improve the
+            app experience.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -157,33 +209,47 @@ export default function ShareFeedbackScreen() {
 }
 
 const styles = StyleSheet.create({
-  headerRow: {
+  container: { flex: 1, backgroundColor: '#FFE6C7' },
+  headerBackground: {
+    width: '100%',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    overflow: 'hidden',
+    paddingVertical: 30,
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(254,192,117,0.5)',
+  },
+  headerContainer: { paddingHorizontal: 16 },
+  headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#fff',
-    elevation: 2,
-    marginBottom: 16,
   },
-  headerText: { fontSize: 22, fontWeight: 'bold', color: '#0f172a' },
+  headerTitle: {
+    fontSize: 32,
+    fontFamily: 'Roboto_700Bold',
+    color: '#1F2937',
+    textAlign: 'center',
+    flex: 1,
+    marginHorizontal: 10,
+  },
   card: {
-    backgroundColor: 'white',
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginBottom: 12,
     borderRadius: 16,
     padding: 16,
-    marginBottom: 16,
+    elevation: 2,
   },
-  visibleCard: {
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+  cardTitle: {
+    fontSize: 16,
+    fontFamily: 'Roboto_500Medium',
+    color: '#0f172a',
+    marginBottom: 8,
   },
-  cardTitle: { fontSize: 16, fontWeight: '600', color: '#0f172a', marginBottom: 8 },
-  grayText: { color: '#6b7280', fontSize: 14 },
+  cardText: { fontSize: 14, fontFamily: 'Roboto_400Regular', color: '#4b5563' },
   chip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -192,7 +258,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
     marginBottom: 8,
   },
-  chipText: { fontSize: 13, fontWeight: '600' },
+  chipText: { fontSize: 13, fontFamily: 'Roboto_500Medium' },
   textInput: {
     minHeight: 120,
     padding: 12,
@@ -201,14 +267,22 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     color: '#0f172a',
     fontSize: 14,
+    fontFamily: 'Roboto_400Regular',
     backgroundColor: '#f9fafb',
   },
-  btnOrange: {
+  contactBtn: {
     backgroundColor: ORANGE,
     borderRadius: 12,
     paddingVertical: 14,
-    marginTop: 16,
+    marginHorizontal: 16,
+    marginTop: 24,
     alignItems: 'center',
   },
-  btnText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  contactText: { color: '#fff', fontSize: 16, fontFamily: 'Roboto_500Medium' },
+  disclaimer: {
+    marginTop: 12,
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
 });

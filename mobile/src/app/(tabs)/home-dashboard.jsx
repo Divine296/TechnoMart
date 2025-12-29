@@ -239,7 +239,7 @@ export default function HomeDashboardScreen() {
 
       {/* Notifications Dropdown */}
       {openDropdown === 'notifications' && (
-        <View style={[styles.dropdownContainer, { top: 60, right: 40 }]}>
+        <View style={[styles.dropdownContainer, { top: 80, right: 40 }]}>
           <View style={styles.triangle} />
           <View style={styles.dropdown}>
             {menuNotifications.length === 0 ? (
@@ -312,7 +312,7 @@ export default function HomeDashboardScreen() {
 
       {/* Settings Dropdown */}
       {openDropdown === 'settings' && (
-        <View style={[styles.dropdownContainer, { top: 60, right: 8 }]}>
+        <View style={[styles.dropdownContainer, { top: 80, right: 8 }]}>
           <View style={styles.triangle} />
           <View style={styles.dropdown}>
             <TouchableOpacity

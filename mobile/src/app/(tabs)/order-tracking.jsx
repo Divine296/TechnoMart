@@ -12,16 +12,25 @@ import {
   ScrollView,
   PanResponder,
   Animated,
-  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { fetchUserOrders } from '../../api/api';
-import { useFonts, Roboto_400Regular, Roboto_700Bold } from '@expo-google-fonts/roboto';
+import { useRouter } from 'expo-router';
+import {
+  useFonts,
+  Roboto_400Regular,
+  Roboto_500Medium,
+  Roboto_700Bold,
+} from '@expo-google-fonts/roboto';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const BACKEND = "http://192.168.166.179:8000";
-
-const statusSteps = ['Pending', 'Accepted', 'In Progress', 'Ready', 'Completed'];
+const statusSteps = [
+  'Pending',
+  'Accepted',
+  'In Progress',
+  'Ready',
+  'Completed',
+];
 const statusColors = ['#f39c12', '#3498db', '#8e44ad', '#27ae60', '#2ecc71'];
 const statusMapping = {
   pending: 0,
@@ -29,15 +38,20 @@ const statusMapping = {
   in_progress: 2,
   ready: 3,
   completed: 4,
-  cancelled: 0, // Cancelled treated as 0 for display purposes
+  cancelled: 0,
 };
 
 export default function OrderTrackingScreen() {
+  const router = useRouter();
   const [orders, setOrders] = useState([]);
   const [completedOrders, setCompletedOrders] = useState([]);
   const [cancelledOrders, setCancelledOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [fontsLoaded] = useFonts({ Roboto_400Regular, Roboto_700Bold });
+  const [fontsLoaded] = useFonts({
+    Roboto_400Regular,
+    Roboto_500Medium,
+    Roboto_700Bold,
+  });
   const [showCompleted, setShowCompleted] = useState(false);
   const [showCancelled, setShowCancelled] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -50,9 +64,19 @@ export default function OrderTrackingScreen() {
     try {
       const data = await fetchUserOrders();
       const list = Array.isArray(data) ? data : [];
-      setOrders(list.filter(o => (o.status ?? '').toLowerCase() !== 'completed' && (o.status ?? '').toLowerCase() !== 'cancelled'));
-      setCompletedOrders(list.filter(o => (o.status ?? '').toLowerCase() === 'completed'));
-      setCancelledOrders(list.filter(o => (o.status ?? '').toLowerCase() === 'cancelled'));
+      setOrders(
+        list.filter(
+          (o) =>
+            (o.status ?? '').toLowerCase() !== 'completed' &&
+            (o.status ?? '').toLowerCase() !== 'cancelled'
+        )
+      );
+      setCompletedOrders(
+        list.filter((o) => (o.status ?? '').toLowerCase() === 'completed')
+      );
+      setCancelledOrders(
+        list.filter((o) => (o.status ?? '').toLowerCase() === 'cancelled')
+      );
     } catch (err) {
       console.error('Error fetching orders:', err);
       setOrders([]);
@@ -69,35 +93,6 @@ export default function OrderTrackingScreen() {
     return () => clearInterval(interval);
   }, []);
 
-  // Cancel Order
-  const cancelOrder = (orderId) => {
-    Alert.alert(
-      "Cancel Order",
-      "Are you sure you want to cancel this order?",
-      [
-        { text: "No" },
-        {
-          text: "Yes",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await fetch(`${BACKEND}/orders/orders/${orderId}/cancel/`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-              });
-              await loadOrders();
-              closeDetailModal();
-              Alert.alert("Success", "Order canceled successfully!");
-            } catch (err) {
-              console.error("Cancel failed:", err);
-              Alert.alert("Error", "Could not cancel order.");
-            }
-          },
-        },
-      ]
-    );
-  };
-
   if (!panResponderRef.current) {
     panResponderRef.current = PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -111,8 +106,8 @@ export default function OrderTrackingScreen() {
             duration: 200,
             useNativeDriver: true,
           }).start(() => {
-            translateY.setValue(0);
-            closeDetailModal();
+            closeDetailModal(); // first close the modal
+            translateY.setValue(0); // then reset position
           });
         } else {
           Animated.spring(translateY, {
@@ -125,7 +120,6 @@ export default function OrderTrackingScreen() {
   }
 
   const openDetailModal = (order) => {
-    console.log('Selected Order:', order); // Debugging
     setSelectedOrder(order);
     setModalVisible(true);
   };
@@ -137,14 +131,6 @@ export default function OrderTrackingScreen() {
 
   const renderStatusBar = (order) => {
     const statusIndex = statusMapping[(order.status || '').toLowerCase()] ?? 0;
-    let partialProgress = 0;
-    if ((order.status || '').toLowerCase() === 'in_progress' && order.total_items_cached > 0) {
-      partialProgress = Math.min(
-        (order.partial_ready_items || 0) / (order.total_items_cached || 1),
-        1
-      );
-    }
-
     return (
       <View style={styles.statusContainer}>
         {statusSteps.map((step, index) => (
@@ -154,12 +140,7 @@ export default function OrderTrackingScreen() {
                 styles.stepCircle,
                 {
                   backgroundColor:
-                    index < statusIndex
-                      ? statusColors[index]
-                      : index === statusIndex && partialProgress > 0
-                      ? statusColors[index]
-                      : '#ccc',
-                  opacity: index === statusIndex && partialProgress > 0 ? partialProgress : 1,
+                    index <= statusIndex ? statusColors[index] : '#ccc',
                 },
               ]}
             />
@@ -169,12 +150,7 @@ export default function OrderTrackingScreen() {
                   styles.stepLine,
                   {
                     backgroundColor:
-                      index < statusIndex
-                        ? statusColors[index]
-                        : index === statusIndex && partialProgress > 0
-                        ? statusColors[index]
-                        : '#ccc',
-                    opacity: index === statusIndex && partialProgress > 0 ? partialProgress : 1,
+                      index < statusIndex ? statusColors[index] : '#ccc',
                   },
                 ]}
               />
@@ -194,6 +170,7 @@ export default function OrderTrackingScreen() {
 
     return (
       <LinearGradient
+        key={order.id ?? order.order_number}
         colors={['#fff7f0', '#fff']}
         start={[0, 0]}
         end={[1, 1]}
@@ -201,15 +178,28 @@ export default function OrderTrackingScreen() {
       >
         <View style={styles.orderHeader}>
           <Text style={styles.orderId}>Order #{order.order_number}</Text>
-          <Text
-            style={[
-              styles.statusText,
-              { color: statusColors[statusMapping[(order.status || '').toLowerCase()] ?? 0] },
-            ]}
-          >
-            {(order.status || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-          </Text>
+          <View style={styles.statusTextContainer}>
+            <Text
+              style={[
+                styles.statusText,
+                {
+                  color:
+                    statusColors[
+                      statusMapping[(order.status || '').toLowerCase()] ?? 0
+                    ],
+                },
+              ]}
+            >
+              {(order.status || '')
+                .replace(/_/g, ' ')
+                .replace(/\b\w/g, (c) => c.toUpperCase())}
+            </Text>
+          </View>
         </View>
+
+        <Text style={styles.dateText}>
+          Ordered on: {new Date(order.created_at).toLocaleString()}
+        </Text>
 
         {renderStatusBar(order)}
 
@@ -224,8 +214,14 @@ export default function OrderTrackingScreen() {
             )}
             <View style={styles.itemDetails}>
               <Text style={styles.itemName}>{item.name || 'Unnamed Item'}</Text>
-              {item.size && <Text style={styles.itemDetail}>Size: {item.size}</Text>}
-              {item.customize && <Text style={styles.itemDetail}>Customize: {item.customize}</Text>}
+              {item.size && (
+                <Text style={styles.itemDetail}>Size: {item.size}</Text>
+              )}
+              {item.customize && (
+                <Text style={styles.itemDetail}>
+                  Customize: {item.customize}
+                </Text>
+              )}
               <Text style={styles.itemDetail}>Qty: {item.quantity ?? 0}</Text>
             </View>
             <View style={styles.itemPriceContainer}>
@@ -236,14 +232,17 @@ export default function OrderTrackingScreen() {
           </View>
         ))}
 
-        <TouchableOpacity style={styles.viewMoreButton} onPress={() => openDetailModal(order)}>
-          <Text style={styles.viewMoreText}>View Details</Text>
-        </TouchableOpacity>
-
         <View style={styles.totalContainer}>
           <Text style={styles.totalText}>Total</Text>
           <Text style={styles.totalAmount}>₱{totalAmount.toFixed(2)}</Text>
         </View>
+
+        <TouchableOpacity
+          style={styles.viewMoreButton}
+          onPress={() => openDetailModal(order)}
+        >
+          <Text style={styles.viewMoreText}>View Details</Text>
+        </TouchableOpacity>
       </LinearGradient>
     );
   };
@@ -256,15 +255,6 @@ export default function OrderTrackingScreen() {
     );
   }
 
-  if (!orders.length) {
-    return (
-      <View style={styles.emptyContainer}>
-        <Ionicons name="cart-outline" size={80} color="#ccc" />
-        <Text style={styles.emptyText}>No orders found</Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <ImageBackground
@@ -272,10 +262,12 @@ export default function OrderTrackingScreen() {
         resizeMode="cover"
         style={styles.headerBackground}
       >
-        <View style={styles.overlay} />
+        <View style={styles.overlay} pointerEvents="none" />
         <View style={styles.headerContainer}>
           <View style={styles.headerTopRow}>
-            <Ionicons name="arrow-back" size={26} color="black" />
+            <TouchableOpacity onPress={() => router.push('/home-dashboard')}>
+              <Ionicons name="arrow-back" size={26} color="black" />
+            </TouchableOpacity>
             <Text style={styles.headerTitle}>My Orders</Text>
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <TouchableOpacity onPress={() => setShowCompleted(true)}>
@@ -289,76 +281,23 @@ export default function OrderTrackingScreen() {
         </View>
       </ImageBackground>
 
-      <FlatList
-        data={orders}
-        keyExtractor={(order) => (order.order_number || order.id || Math.random()).toString()}
-        contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
-        renderItem={({ item }) => renderOrderItem(item)}
-      />
-
-      {/* COMPLETED ORDERS MODAL */}
-      {showCompleted && (
-        <Modal
-          visible={showCompleted}
-          animationType="slide"
-          onRequestClose={() => setShowCompleted(false)}
-        >
-          <View style={{ flex: 1, backgroundColor: '#fff' }}>
-            <View style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={{ fontSize: 22, fontFamily: 'Roboto_700Bold' }}>Completed Orders</Text>
-              <TouchableOpacity onPress={() => setShowCompleted(false)}>
-                <Ionicons name="close" size={28} color="black" />
-              </TouchableOpacity>
-            </View>
-            {completedOrders.length > 0 ? (
-              <FlatList
-                data={completedOrders}
-                keyExtractor={(order) => (order.order_number || order.id || Math.random()).toString()}
-                renderItem={({ item }) => renderOrderItem(item)}
-                contentContainerStyle={{ padding: 16 }}
-              />
-            ) : (
-              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <Ionicons name="checkmark-circle-outline" size={80} color="#ccc" />
-                <Text style={{ fontSize: 18, color: '#999', marginTop: 10 }}>No completed orders yet</Text>
-              </View>
-            )}
-          </View>
-        </Modal>
+      {orders.length ? (
+        <FlatList
+          data={orders}
+          keyExtractor={(order) =>
+            (order.order_number ?? order.id ?? Math.random()).toString()
+          }
+          contentContainerStyle={{ padding: 16 }}
+          renderItem={({ item }) => renderOrderItem(item)}
+        />
+      ) : (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="cart-outline" size={80} color="#ccc" />
+          <Text style={styles.emptyText}>No orders found</Text>
+        </View>
       )}
 
-      {/* CANCELLED ORDERS MODAL */}
-      {showCancelled && (
-        <Modal
-          visible={showCancelled}
-          animationType="slide"
-          onRequestClose={() => setShowCancelled(false)}
-        >
-          <View style={{ flex: 1, backgroundColor: '#fff' }}>
-            <View style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={{ fontSize: 22, fontFamily: 'Roboto_700Bold' }}>Cancelled Orders</Text>
-              <TouchableOpacity onPress={() => setShowCancelled(false)}>
-                <Ionicons name="close" size={28} color="black" />
-              </TouchableOpacity>
-            </View>
-            {cancelledOrders.length > 0 ? (
-              <FlatList
-                data={cancelledOrders}
-                keyExtractor={(order) => (order.order_number || order.id || Math.random()).toString()}
-                renderItem={({ item }) => renderOrderItem(item)}
-                contentContainerStyle={{ padding: 16 }}
-              />
-            ) : (
-              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <Ionicons name="close-circle-outline" size={80} color="#ccc" />
-                <Text style={{ fontSize: 18, color: '#999', marginTop: 10 }}>No cancelled orders</Text>
-              </View>
-            )}
-          </View>
-        </Modal>
-      )}
-
-      {/* ORDER DETAILS MODAL */}
+      {/* ---------------- REDESIGNED ORDER DETAILS MODAL ---------------- */}
       <Modal
         visible={modalVisible}
         animationType="fade"
@@ -370,7 +309,10 @@ export default function OrderTrackingScreen() {
             {...panResponderRef.current.panHandlers}
             style={[styles.modalContainer, { transform: [{ translateY }] }]}
           >
-            <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
+            <ScrollView
+              contentContainerStyle={{ paddingBottom: 120 }} // extra space for sticky button
+              showsVerticalScrollIndicator={false}
+            >
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Order Details</Text>
                 <TouchableOpacity onPress={closeDetailModal}>
@@ -380,162 +322,451 @@ export default function OrderTrackingScreen() {
 
               {selectedOrder ? (
                 <>
-                  <View style={styles.modalRow}>
-                    <Text style={styles.modalLabel}>Order #</Text>
-                    <Text style={styles.modalValue}>{selectedOrder.order_number}</Text>
-                  </View>
-
-                  <View style={styles.modalRow}>
-                    <Text style={styles.modalLabel}>Status</Text>
+                  {/* Order Info */}
+                  <View style={styles.modalCard}>
+                    <Text style={styles.modalCardTitle}>
+                      Order #{selectedOrder.order_number}
+                    </Text>
                     <Text
-                      style={[styles.modalValue, { color: statusColors[statusMapping[(selectedOrder.status || '').toLowerCase()] ?? 0] }]}
+                      style={[
+                        styles.statusText,
+                        {
+                          color:
+                            statusColors[
+                              statusMapping[
+                                (selectedOrder.status || '').toLowerCase()
+                              ] ?? 0
+                            ],
+                        },
+                      ]}
                     >
-                      {(selectedOrder.status || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                      {(selectedOrder.status || '')
+                        .replace(/_/g, ' ')
+                        .replace(/\b\w/g, (c) => c.toUpperCase())}
                     </Text>
+                    <Text style={styles.modalSmallText}>
+                      Ordered on:{' '}
+                      {new Date(selectedOrder.created_at).toLocaleString()}
+                    </Text>
+                    <View style={{ marginVertical: 8 }}>
+                      {renderStatusBar(selectedOrder)}
+                    </View>
                   </View>
 
-                  <View style={{ marginVertical: 8 }}>{renderStatusBar(selectedOrder)}</View>
-
-                  <View style={{ marginTop: 8 }}>
-                    <Text style={[styles.modalLabel, { marginBottom: 6 }]}>Items</Text>
-                    {Array.isArray(selectedOrder.items) &&
-                      selectedOrder.items.map((it, idx) => (
-                        <View key={idx} style={styles.modalItemRow}>
-                          {it.image ? (
-                            <Image source={{ uri: it.image }} style={styles.modalItemImage} />
-                          ) : (
-                            <View style={[styles.modalItemImage, styles.noImage]}>
-                              <Text style={{ color: '#aaa' }}>No Image</Text>
-                            </View>
-                          )}
-                          <View style={{ flex: 1, marginLeft: 10 }}>
+                  {/* Items List */}
+                  <View style={styles.modalCard}>
+                    <Text style={styles.modalCardTitle}>Items</Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                    >
+                      {Array.isArray(selectedOrder.items) &&
+                        selectedOrder.items.map((it, idx) => (
+                          <View
+                            key={idx}
+                            style={{
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              marginRight: 12,
+                            }}
+                          >
+                            {it.image ? (
+                              <Image
+                                source={{ uri: it.image }}
+                                style={styles.modalItemImage}
+                              />
+                            ) : (
+                              <View
+                                style={[styles.modalItemImage, styles.noImage]}
+                              >
+                                <Text style={{ color: '#aaa' }}>No Image</Text>
+                              </View>
+                            )}
                             <Text style={styles.modalItemName}>{it.name}</Text>
-                            <Text style={styles.modalItemSmall}>Qty: {it.quantity ?? 0}</Text>
-                            {it.size && <Text style={styles.modalItemSmall}>Size: {it.size}</Text>}
+                            <Text style={styles.modalItemSmall}>
+                              Qty: {it.quantity ?? 0}
+                            </Text>
+                            {it.size && (
+                              <Text style={styles.modalItemSmall}>
+                                Size: {it.size}
+                              </Text>
+                            )}
+                            {it.customize && (
+                              <Text style={styles.modalItemSmall}>
+                                Customize: {it.customize}
+                              </Text>
+                            )}
+                            <Text style={styles.modalItemPrice}>
+                              ₱
+                              {((it.price || 0) * (it.quantity || 1)).toFixed(
+                                2
+                              )}
+                            </Text>
                           </View>
-                          <Text style={styles.modalItemPrice}>
-                            ₱{((it.price || 0) * (it.quantity || 1)).toFixed(2)}
-                          </Text>
-                        </View>
-                      ))}
+                        ))}
+                    </ScrollView>
                   </View>
 
-                  <View style={styles.modalRow}>
-                    <Text style={styles.modalLabel}>Payment</Text>
-                    <Text style={styles.modalValue}>
-                      {selectedOrder.payment_method || selectedOrder.payment || 'N/A'}
-                    </Text>
-                  </View>
-
-                  <View style={styles.modalRow}>
-                    <Text style={styles.modalLabel}>Order Date</Text>
-                    <Text style={styles.modalValue}>
-                      {selectedOrder.created_at || selectedOrder.order_date
-                        ? new Date(selectedOrder.created_at || selectedOrder.order_date).toLocaleString()
-                        : 'N/A'}
-                    </Text>
-                  </View>
-
-                  <View style={styles.modalTotals}>
-                    <Text style={styles.modalTotalLabel}>Total</Text>
-                    <Text style={styles.modalTotalValue}>
-                      ₱
-                      {(
-                        Array.isArray(selectedOrder.items)
+                  {/* Payment & Totals */}
+                  <View style={styles.modalCard}>
+                    <View style={styles.modalRow}>
+                      <Text style={styles.modalLabel}>Payment Method</Text>
+                      <Text style={styles.modalValue}>
+                        {selectedOrder.payment_method ||
+                          selectedOrder.payment ||
+                          'N/A'}
+                      </Text>
+                    </View>
+                    <View style={styles.modalRow}>
+                      <Text style={styles.modalLabel}>Order Date</Text>
+                      <Text style={styles.modalValue}>
+                        {selectedOrder.created_at
+                          ? new Date(selectedOrder.created_at).toLocaleString()
+                          : 'N/A'}
+                      </Text>
+                    </View>
+                    <View style={styles.modalTotals}>
+                      <Text style={styles.modalTotalLabel}>Total</Text>
+                      <Text style={styles.modalTotalValue}>
+                        ₱
+                        {(Array.isArray(selectedOrder.items)
                           ? selectedOrder.items.reduce(
-                              (s, it) => s + (it.price || 0) * (it.quantity || 1),
+                              (s, it) =>
+                                s + (it.price || 0) * (it.quantity || 1),
                               0
                             )
                           : 0
-                      ).toFixed(2)}
-                    </Text>
-                  </View>
-
-                  {/* --- BUTTONS --- */}
-                  <View style={styles.buttonRow}>
-                    {/* Cancel Order button */}
-                    {selectedOrder.status &&
-                      !['completed', 'cancelled'].includes(selectedOrder.status.toLowerCase()) && (
-                        <TouchableOpacity
-                          style={[styles.actionButton, { backgroundColor: '#d9534f' }]}
-                          onPress={() => cancelOrder(selectedOrder.order_number)}
-                        >
-                          <Text style={styles.actionButtonText}>Cancel Order</Text>
-                        </TouchableOpacity>
-                      )}
+                        ).toFixed(2)}
+                      </Text>
+                    </View>
                   </View>
                 </>
               ) : (
                 <View style={{ padding: 20 }}>
-                  <Text style={{ textAlign: 'center' }}>No order selected</Text>
+                  <Text style={{ textAlign: 'center', color: '#555' }}>
+                    No order selected
+                  </Text>
                 </View>
               )}
             </ScrollView>
+
+            {/* Sticky Cancel Button */}
+            {selectedOrder &&
+              selectedOrder.status &&
+              !['completed', 'cancelled'].includes(
+                selectedOrder.status.toLowerCase()
+              ) && (
+                <View style={styles.stickyButtonContainer}>
+                  <TouchableOpacity
+                    style={[
+                      styles.actionButton,
+                      { backgroundColor: '#d9534f' },
+                    ]}
+                    onPress={() => cancelOrder(selectedOrder.order_number)}
+                  >
+                    <Text style={styles.actionButtonText}>Cancel Order</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
           </Animated.View>
+        </View>
+      </Modal>
+
+      {/* Completed Orders Modal */}
+      <Modal visible={showCompleted} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Completed Orders</Text>
+              <TouchableOpacity onPress={() => setShowCompleted(false)}>
+                <Ionicons name="close" size={26} color="black" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={styles.modalScrollContent}>
+              {completedOrders.length ? (
+                completedOrders.map((order) => (
+                  <View
+                    key={order.id ?? order.order_number}
+                    style={styles.modalOrderWrapper}
+                  >
+                    {renderOrderItem(order)}
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.emptyText}>No completed orders found.</Text>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Cancelled Orders Modal */}
+      <Modal visible={showCancelled} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Cancelled Orders</Text>
+              <TouchableOpacity onPress={() => setShowCancelled(false)}>
+                <Ionicons name="close" size={26} color="black" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={styles.modalScrollContent}>
+              {cancelledOrders.length ? (
+                cancelledOrders.map((order) => (
+                  <View
+                    key={order.id ?? order.order_number}
+                    style={styles.modalOrderWrapper}
+                  >
+                    {renderOrderItem(order)}
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.emptyText}>No cancelled orders found.</Text>
+              )}
+            </ScrollView>
+          </View>
         </View>
       </Modal>
     </View>
   );
 }
 
-// --- STYLES REMAIN THE SAME ---
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fdfdfd' },
+  container: { flex: 1, backgroundColor: '#FFE6C7' },
   loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyText: { marginTop: 5, fontSize: 18, fontFamily: 'Roboto_400Regular', color: '#999' },
-
-  headerBackground: { width: '100%', borderBottomLeftRadius: 20, borderBottomRightRadius: 20, overflow: 'hidden', paddingBottom: 8 },
-  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(254,192,117,0.5)' },
-  headerContainer: { paddingTop: 50, paddingBottom: 14, paddingHorizontal: 14 },
-  headerTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  emptyText: {
+    marginTop: 5,
+    fontSize: 18,
+    fontFamily: 'Roboto_400Regular',
+    color: '#999',
+    textAlign: 'center',
+  },
+  headerBackground: {
+    width: '100%',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    overflow: 'hidden',
+    paddingBottom: 8,
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(254,192,117,0.5)',
+    zIndex: 0,
+  },
+  headerContainer: {
+    paddingTop: 50,
+    paddingBottom: 14,
+    paddingHorizontal: 14,
+    zIndex: 1,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   headerTitle: { fontSize: 30, fontFamily: 'Roboto_700Bold', color: 'black' },
 
-  orderCard: { padding: 20, marginBottom: 20, borderRadius: 20, shadowColor: '#f97316', shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
-  orderHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
+  orderCard: {
+    padding: 20,
+    marginBottom: 20,
+    borderRadius: 20,
+    shadowColor: '#f97316',
+    shadowOpacity: 0.1,
+  },
+  orderHeader: { marginBottom: 8, position: 'relative' },
   orderId: { fontSize: 20, fontFamily: 'Roboto_700Bold', color: '#111' },
-  statusText: { fontSize: 16, fontFamily: 'Roboto_700Bold' },
+  statusTextContainer: {
+    position: 'absolute',
+    top: -10,
+    right: -10,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    backgroundColor: '#fef6f0',
+    borderRadius: 12,
+    zIndex: 1,
+  },
+  statusText: { fontSize: 16, fontFamily: 'Roboto_500Medium' },
+  dateText: {
+    fontSize: 14,
+    fontFamily: 'Roboto_400Regular',
+    color: '#555',
+    marginBottom: 8,
+  },
 
-  itemCard: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, backgroundColor: '#fff', borderRadius: 12, padding: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 2 },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    paddingVertical: 6,
+    backgroundColor: '#fef6f0',
+    borderRadius: 12,
+  },
+  stepContainer: { flexDirection: 'row', alignItems: 'center' },
+  stepCircle: { width: 14, height: 14, borderRadius: 7 },
+  stepLine: { width: 28, height: 3, marginHorizontal: 3, borderRadius: 2 },
+
+  itemCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
+  },
   itemImage: { width: 60, height: 60, borderRadius: 12, marginRight: 12 },
-  noImage: { backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center' },
+  noImage: {
+    backgroundColor: '#eee',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   itemDetails: { flex: 1 },
   itemName: { fontSize: 16, fontFamily: 'Roboto_700Bold', color: '#333' },
   itemDetail: { fontSize: 14, fontFamily: 'Roboto_400Regular', color: '#555' },
   itemPriceContainer: { alignItems: 'flex-end' },
   itemPrice: { fontSize: 14, fontFamily: 'Roboto_400Regular', color: '#888' },
 
-  statusContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, justifyContent: 'center' },
-  stepContainer: { flexDirection: 'row', alignItems: 'center' },
-  stepCircle: { width: 16, height: 16, borderRadius: 8 },
-  stepLine: { width: 30, height: 4, marginHorizontal: 4, borderRadius: 2 },
-
-  totalContainer: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 8 },
+  totalContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    paddingTop: 8,
+  },
   totalText: { fontSize: 16, fontFamily: 'Roboto_700Bold', color: '#111' },
   totalAmount: { fontSize: 18, fontFamily: 'Roboto_700Bold', color: '#f97316' },
 
-  viewMoreButton: { marginTop: 10, padding: 8, borderRadius: 10, backgroundColor: '#f97316', width: '48%', alignSelf: 'center' },
-  viewMoreText: { color: '#fff', textAlign: 'center', fontFamily: 'Roboto_700Bold' },
+  viewMoreButton: {
+    marginTop: 10,
+    padding: 8,
+    borderRadius: 10,
+    backgroundColor: '#f97316',
+    width: '48%',
+    alignSelf: 'center',
+  },
+  viewMoreText: {
+    color: '#fff',
+    textAlign: 'center',
+    fontFamily: 'Roboto_700Bold',
+  },
 
-  modalBackground: { flex: 1, justifyContent: 'flex-end', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.45)' },
-  modalContainer: { width: '100%', maxHeight: '85%', backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  modalTitle: { fontSize: 22, fontFamily: 'Roboto_700Bold' },
-  modalRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 16 },
-  modalLabel: { fontSize: 16, fontFamily: 'Roboto_700Bold', color: '#444' },
-  modalValue: { fontSize: 16, fontFamily: 'Roboto_400Regular', color: '#333' },
+  modalBackground: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    maxHeight: '80%',
+    backgroundColor: '#FFE6C7',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 16,
+  },
+  modalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  modalLabel: { fontSize: 16, fontFamily: 'Roboto_500Medium', color: '#333' },
+  modalValue: { fontSize: 16, fontFamily: 'Roboto_400Regular', color: '#555' },
+  modalItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalItemImage: { width: 60, height: 60, borderRadius: 12 },
+  modalItemName: { fontSize: 16, fontFamily: 'Roboto_700Bold', color: '#333' },
+  modalItemSmall: {
+    fontSize: 14,
+    fontFamily: 'Roboto_400Regular',
+    color: '#555',
+  },
+  modalItemPrice: {
+    fontSize: 14,
+    fontFamily: 'Roboto_400Regular',
+    color: '#888',
+    marginLeft: 10,
+  },
+  modalTotals: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+  },
+  modalTotalLabel: {
+    fontSize: 16,
+    fontFamily: 'Roboto_700Bold',
+    color: '#111',
+  },
+  modalTotalValue: {
+    fontSize: 18,
+    fontFamily: 'Roboto_700Bold',
+    color: '#f97316',
+  },
+  actionButton: { padding: 10, borderRadius: 12 },
+  actionButtonText: {
+    color: '#fff',
+    fontFamily: 'Roboto_700Bold',
+    textAlign: 'center',
+  },
 
-  modalItemRow: { flexDirection: 'row', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f1f1f1' },
-  modalItemImage: { width: 55, height: 55, borderRadius: 10 },
-  modalItemName: { fontSize: 15, fontFamily: 'Roboto_700Bold', color: '#444' },
-  modalItemSmall: { fontSize: 13, fontFamily: 'Roboto_400Regular', color: '#777' },
-  modalItemPrice: { fontSize: 15, fontFamily: 'Roboto_700Bold', color: '#444' },
+  stickyButtonContainer: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 16,
+    zIndex: 10,
+  },
 
-  modalTotals: { marginTop: 10, padding: 16, borderTopWidth: 1, borderTopColor: '#eee' },
-  modalTotalLabel: { fontSize: 18, fontFamily: 'Roboto_700Bold', color: '#111' },
-  modalTotalValue: { fontSize: 20, fontFamily: 'Roboto_700Bold', color: '#f97316', marginTop: 4 },
-
-  buttonRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, gap: 10 },
-  actionButton: { flex: 1, padding: 12, borderRadius: 10 },
-  actionButtonText: { color: '#fff', textAlign: 'center', fontFamily: 'Roboto_700Bold', fontSize: 16 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    maxHeight: '80%',
+    backgroundColor: '#FFE6C7',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 16,
+  },
+  modalScrollContent: { paddingBottom: 20 },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalTitle: { fontSize: 20, fontFamily: 'Roboto_700Bold', color: '#111' },
+  modalOrderWrapper: {
+    marginBottom: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: '#FEC075',
+    backgroundColor: '#fff',
+  },
+  modalCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+  },
+  modalCardTitle: {
+    fontSize: 18,
+    fontFamily: 'Roboto_700Bold',
+    color: '#111',
+    marginBottom: 6,
+  },
+  modalSmallText: {
+    fontSize: 14,
+    fontFamily: 'Roboto_400Regular',
+    color: '#555',
+    marginBottom: 4,
+  },
 });

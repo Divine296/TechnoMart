@@ -186,7 +186,7 @@ export default function HomeDashboardScreen() {
         style={styles.headerBackground}
       >
         <View style={styles.overlay} />
-        <View style={{ zIndex: 2, paddingHorizontal: 16, paddingTop: 30 }}>
+        <View style={{ zIndex: 2, paddingHorizontal: 16, paddingTop: 50 }}>
           <View style={styles.headerRow}>
             <Text style={styles.headerTitle}>HOME</Text>
             <View style={{ flexDirection: 'row', gap: 16 }}>
@@ -370,7 +370,7 @@ export default function HomeDashboardScreen() {
           />
         }
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 140 }}
+        contentContainerStyle={{ paddingBottom: 20 }}
       >
         {searchQuery.trim() ? (
           <>
@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   newNotification: {
-    backgroundColor: '#F3F4F6', // light gray for new
+    backgroundColor: '#F3F4F6',
     borderRadius: 8,
   },
 });

@@ -175,6 +175,7 @@ export default function CustomerCartScreen() {
           total: finalTotal.toFixed(2),
           selectedTime,
           orderId: res.order_number,
+          items: JSON.stringify(cart),
         },
       });
     } catch (err) {

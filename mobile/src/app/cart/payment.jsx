@@ -8,104 +8,99 @@ import {
   Image,
   Modal,
   Animated,
+  ScrollView,
   Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { Ionicons } from '@expo/vector-icons';
-import { useFonts, Roboto_400Regular, Roboto_700Bold } from '@expo-google-fonts/roboto';
+import {
+  useFonts,
+  Roboto_400Regular,
+  Roboto_700Bold,
+} from '@expo-google-fonts/roboto';
 import { getGcashLink, confirmPayment } from '../../api/api';
 
 export default function PaymentPage() {
   const router = useRouter();
-  const { orderType, total, selectedTime, orderId } = useLocalSearchParams();
+  const { orderType, total, selectedTime, orderId, items } =
+    useLocalSearchParams();
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showCounterModal, setShowCounterModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
+  const orderedItems = items ? JSON.parse(items) : [];
+
   useEffect(() => {
     if (showSuccess) {
-      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
     } else fadeAnim.setValue(0);
   }, [showSuccess]);
 
   let [fontsLoaded] = useFonts({ Roboto_400Regular, Roboto_700Bold });
   if (!fontsLoaded) return null;
 
+  const closeCounterModal = () => {
+    setShowCounterModal(false);
+    router.push({
+      pathname: '/(tabs)/order-tracking',
+      params: { orderId },
+    });
+  };
+
   const handlePaymentSelect = async (method) => {
-  setSelectedPayment(method);
+    setSelectedPayment(method);
 
-  if (method === 'gcash') {
-    try {
-      const { gcash_url } = await getGcashLink(orderId, total);
-      const supported = await Linking.canOpenURL(gcash_url);
-      if (!supported) {
-        Alert.alert('GCash not installed', 'Please install GCash to continue.');
-        return;
-      }
-      await Linking.openURL(gcash_url);
-      setLoading(true);
-
-      // Polling after GCash payment
-      setTimeout(async () => {
-        const res = await confirmPayment(orderId, method);
-        setLoading(false);
-        if (res.success) {
-          setShowSuccess(true);
-
-          // Navigate to Order Tracking after 4 seconds
-          setTimeout(() => {
-            setShowSuccess(false);
-            router.push({
-              pathname: '/(tabs)/order-tracking',
-              params: { orderId: orderId }, // pass orderId if needed
-            });
-          }, 4000);
-        } else {
-          Alert.alert('Payment Failed', res.message);
+    if (method === 'gcash') {
+      try {
+        const { gcash_url } = await getGcashLink(orderId, total);
+        const supported = await Linking.canOpenURL(gcash_url);
+        if (!supported) {
+          Alert.alert('GCash not installed', 'Please install GCash.');
+          return;
         }
-      }, 6000);
-    } catch (err) {
-      console.log(err);
-      setLoading(false);
-      Alert.alert('Error', 'Something went wrong with GCash payment.');
-    }
-  } else if (method === 'counter') {
-    try {
-      const res = await confirmPayment(orderId, method);
-      if (res.success) {
-        setShowSuccess(true);
-        setTimeout(() => {
-          setShowSuccess(false);
-          router.push({
-            pathname: '/(tabs)/order-tracking',
-            params: { orderId: orderId },
-          });
-        }, 4000);
-      } else {
-        Alert.alert('Payment Failed', res.message);
-      }
-    } catch {
-      Alert.alert('Error', 'Could not confirm counter payment.');
-    }
-  }
-};
+        await Linking.openURL(gcash_url);
+        setLoading(true);
 
-  if (!orderId) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>Missing order details. Go back to cart.</Text>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Text style={styles.backBtnText}>Back</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+        setTimeout(async () => {
+          const res = await confirmPayment(orderId, method);
+          setLoading(false);
+          if (res.success) {
+            setShowSuccess(true);
+            setTimeout(() => {
+              setShowSuccess(false);
+              router.push({
+                pathname: '/(tabs)/order-tracking',
+                params: { orderId },
+              });
+            }, 4000);
+          } else {
+            Alert.alert('Payment Failed', res.message);
+          }
+        }, 6000);
+      } catch {
+        setLoading(false);
+        Alert.alert('Error', 'GCash payment failed.');
+      }
+    } else {
+      // Pay at Counter
+      setShowCounterModal(true);
+    }
+  };
 
   return (
     <View style={styles.container}>
-      <ImageBackground source={require('../../../assets/drop_1.png')} style={styles.headerBackground}>
+      {/* HEADER */}
+      <ImageBackground
+        source={require('../../../assets/drop_1.png')}
+        style={styles.headerBackground}
+      >
         <View style={styles.overlay} />
         <View style={styles.headerContainer}>
           <View style={styles.headerTopRow}>
@@ -118,8 +113,32 @@ export default function PaymentPage() {
         </View>
       </ImageBackground>
 
+      {/* RECEIPT */}
       <View style={styles.receiptCard}>
         <Text style={styles.receiptHeader}>Order Receipt</Text>
+        <View style={styles.line} />
+
+        <ScrollView style={{ maxHeight: 200 }}>
+          {orderedItems.length > 0 ? (
+            orderedItems.map((item) => (
+              <View key={item.id} style={styles.receiptRow}>
+                <Text style={styles.label}>
+                  {item.name} x {item.quantity}
+                </Text>
+                <Text style={styles.value}>
+                  ₱{(item.price * item.quantity).toFixed(2)}
+                </Text>
+              </View>
+            ))
+          ) : (
+            <Text
+              style={{ textAlign: 'center', marginVertical: 10, color: '#777' }}
+            >
+              No items found.
+            </Text>
+          )}
+        </ScrollView>
+
         <View style={styles.line} />
         <View style={styles.receiptRow}>
           <Text style={styles.label}>Order Type</Text>
@@ -131,31 +150,59 @@ export default function PaymentPage() {
         </View>
         <View style={styles.line} />
         <View style={styles.receiptRow}>
-          <Text style={[styles.label, { fontWeight: 'bold' }]}>Total</Text>
-          <Text style={[styles.value, { fontWeight: 'bold' }]}>₱{parseFloat(total).toFixed(2)}</Text>
+          <Text style={[styles.label, { fontFamily: 'Roboto_700Bold' }]}>
+            Total
+          </Text>
+          <Text style={[styles.value, { fontFamily: 'Roboto_700Bold' }]}>
+            ₱{parseFloat(total).toFixed(2)}
+          </Text>
         </View>
       </View>
 
-      {/* Payment Buttons */}
+      {/* PAYMENT OPTIONS */}
       <TouchableOpacity
-        style={[styles.paymentBtn, selectedPayment === 'gcash' && styles.selectedBtn]}
-        onPress={() => handlePaymentSelect('gcash')}
-      >
-        <Image source={require('../../../assets/gcash.png')} style={styles.icon} />
-        <Text style={styles.paymentText}>Pay with GCash</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.paymentBtn, selectedPayment === 'counter' && styles.selectedBtn]}
+        style={[
+          styles.paymentCard,
+          selectedPayment === 'counter' && styles.selectedCard,
+        ]}
         onPress={() => handlePaymentSelect('counter')}
       >
-        <Image source={require('../../../assets/cash.png')} style={styles.icon} />
-        <Text style={styles.paymentText}>Pay at Counter</Text>
+        <Image
+          source={require('../../../assets/cash.png')}
+          style={styles.paymentIcon}
+        />
+        <View>
+          <Text style={styles.paymentTitle}>Pay at the Counter</Text>
+          <Text style={styles.paymentSubtitle}>
+            Place your order now and pay at pickup
+          </Text>
+        </View>
       </TouchableOpacity>
 
-      {loading && <Text style={{ textAlign: 'center', marginTop: 10 }}>Waiting for confirmation...</Text>}
+      <TouchableOpacity
+        style={[
+          styles.paymentCard,
+          selectedPayment === 'gcash' && styles.selectedCard,
+        ]}
+        onPress={() => handlePaymentSelect('gcash')}
+      >
+        <Image
+          source={require('../../../assets/gcash.png')}
+          style={styles.paymentIcon}
+        />
+        <View>
+          <Text style={styles.paymentTitle}>GCash</Text>
+          <Text style={styles.paymentSubtitle}>Make payment via GCash app</Text>
+        </View>
+      </TouchableOpacity>
 
-      {/* Success Modal */}
+      {loading && (
+        <Text style={{ textAlign: 'center', marginTop: 10 }}>
+          Waiting for confirmation...
+        </Text>
+      )}
+
+      {/* GCash SUCCESS MODAL */}
       <Modal transparent visible={showSuccess}>
         <View style={styles.modalOverlay}>
           <Animated.View style={[styles.successBox, { opacity: fadeAnim }]}>
@@ -164,29 +211,161 @@ export default function PaymentPage() {
           </Animated.View>
         </View>
       </Modal>
+
+      {/* COUNTER PAYMENT MODAL */}
+      <Modal transparent visible={showCounterModal} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.counterModalBox}>
+            <Ionicons
+              name="checkmark-circle-outline"
+              size={80}
+              color="#f97316"
+            />
+            <Text style={styles.counterModalTitle}>
+              Order Placed Successfully
+            </Text>
+            <Text style={styles.counterModalMessage}>
+              Your order has been placed. Please pay at the counter upon pickup.
+            </Text>
+            <TouchableOpacity
+              style={styles.counterModalButton}
+              onPress={closeCounterModal}
+            >
+              <Text style={styles.counterModalButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: '#FFE6C7' },
   headerBackground: { paddingBottom: 8 },
-  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255,200,150,0.4)' },
-  headerContainer: { paddingTop: 50, paddingHorizontal: 12 },
-  headerTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerTitle: { fontSize: 26, fontFamily: 'Roboto_700Bold' },
-  receiptCard: {
-    width: '90%', backgroundColor: '#fff', borderRadius: 12, padding: 16,
-    alignSelf: 'center', borderColor: '#ccc', borderWidth: 1, marginVertical: 20,
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(254,192,117,0.5)',
   },
-  line: { borderBottomColor: '#ccc', borderBottomWidth: 1, marginVertical: 8 },
-  receiptRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  label: { fontSize: 16 }, value: { fontSize: 16, fontWeight: '600' },
-  paymentBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: 8, padding: 14, borderRadius: 12, width: '85%', alignSelf: 'center', backgroundColor: '#fff', elevation: 3 },
-  selectedBtn: { backgroundColor: '#f0fdf4', borderWidth: 2, borderColor: '#22c55e' },
-  icon: { width: 50, height: 40 },
-  paymentText: { fontSize: 16, fontWeight: '600', marginLeft: 10 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
-  successBox: { backgroundColor: '#fff', padding: 30, borderRadius: 16, alignItems: 'center' },
-  successTitle: { marginTop: 10, fontSize: 20, fontWeight: '700', color: '#16a34a' },
+  headerContainer: { paddingTop: 50, paddingHorizontal: 12, paddingBottom: 12 },
+  headerTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerTitle: { fontSize: 26, fontFamily: 'Roboto_700Bold' },
+
+  receiptCard: {
+    width: '90%',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    alignSelf: 'center',
+    marginVertical: 20,
+  },
+  receiptHeader: {
+    fontSize: 18,
+    fontFamily: 'Roboto_700Bold',
+    marginBottom: 6,
+  },
+  line: { borderBottomWidth: 1, borderBottomColor: '#eee', marginVertical: 8 },
+  receiptRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  label: { fontSize: 15 },
+  value: { fontSize: 15 },
+
+  paymentCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    marginHorizontal: 20,
+    marginBottom: 14,
+    padding: 16,
+    borderRadius: 50,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  selectedCard: { borderWidth: 2, borderColor: '#f97316' },
+  paymentIcon: {
+    width: 55,
+    height: 55,
+    marginRight: 20,
+    resizeMode: 'contain',
+  },
+  paymentTitle: {
+    fontSize: 20,
+    fontFamily: 'Roboto_700Bold',
+    color: '#3b2a1a',
+  },
+  paymentSubtitle: {
+    fontSize: 13,
+    fontFamily: 'Roboto_400Regular',
+    color: '#777',
+    marginTop: 2,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  successBox: {
+    backgroundColor: '#fff',
+    padding: 30,
+    borderRadius: 18,
+    alignItems: 'center',
+  },
+  successTitle: {
+    marginTop: 10,
+    fontSize: 20,
+    fontFamily: 'Roboto_700Bold',
+    color: '#16a34a',
+  },
+
+  counterModalBox: {
+    backgroundColor: '#fff',
+    padding: 30,
+    borderRadius: 20,
+    alignItems: 'center',
+    width: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  counterModalTitle: {
+    marginTop: 15,
+    fontSize: 20,
+    fontFamily: 'Roboto_700Bold',
+    color: '#333',
+    textAlign: 'center',
+  },
+  counterModalMessage: {
+    marginTop: 10,
+    fontSize: 15,
+    fontFamily: 'Roboto_400Regular',
+    color: '#555',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  counterModalButton: {
+    marginTop: 20,
+    backgroundColor: '#f97316',
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 12,
+  },
+  counterModalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'Roboto_700Bold',
+    textAlign: 'center',
+  },
 });
